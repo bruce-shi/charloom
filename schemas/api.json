@@ -1,0 +1,5926 @@
+{
+  "analysis_config": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "hand_hints": {
+        "default": [],
+        "description": "Optional hand centers; variable digit count is still inferred from geometry.",
+        "items": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "type": "array"
+      },
+      "joint_spacing_ratio": {
+        "default": 0.08,
+        "format": "double",
+        "type": "number"
+      },
+      "prefer_existing_rig": {
+        "default": true,
+        "type": "boolean"
+      },
+      "resolution": {
+        "default": 96,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "root_hint": {
+        "default": null,
+        "description": "Optional world-space root hint. Does not supply a species or a topology.",
+        "items": {
+          "format": "double",
+          "type": "number"
+        },
+        "maxItems": 3,
+        "minItems": 3,
+        "type": [
+          "array",
+          "null"
+        ]
+      }
+    },
+    "title": "AnalysisConfig",
+    "type": "object"
+  },
+  "analysis_result": {
+    "$defs": {
+      "Issue": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/$defs/Severity"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message"
+        ],
+        "type": "object"
+      },
+      "Joint": {
+        "properties": {
+          "deform": {
+            "default": false,
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "matrix": {
+            "description": "Preserves a static affine node exactly, including shear. Animated nodes use TRS.",
+            "items": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "parent": {
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "rest": {
+            "$ref": "#/$defs/Transform"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "rest"
+        ],
+        "type": "object"
+      },
+      "MorphologyChain": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "length": {
+            "format": "double",
+            "type": "number"
+          },
+          "regions": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/$defs/RoleCandidate"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "regions",
+          "length",
+          "roles"
+        ],
+        "type": "object"
+      },
+      "MorphologyGraph": {
+        "properties": {
+          "chains": {
+            "items": {
+              "$ref": "#/$defs/MorphologyChain"
+            },
+            "type": "array"
+          },
+          "regions": {
+            "items": {
+              "$ref": "#/$defs/Region"
+            },
+            "type": "array"
+          },
+          "species_label": {
+            "description": "Optional identity only. Geometry never requires a species label.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "symmetry_pairs": {
+            "items": {
+              "$ref": "#/$defs/SymmetryPair"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "regions",
+          "chains",
+          "symmetry_pairs"
+        ],
+        "type": "object"
+      },
+      "Region": {
+        "properties": {
+          "center": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "parent": {
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "radius": {
+            "format": "double",
+            "type": "number"
+          },
+          "sample_count": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "center",
+          "radius",
+          "sample_count"
+        ],
+        "type": "object"
+      },
+      "RigBlueprint": {
+        "properties": {
+          "chains": {
+            "items": {
+              "$ref": "#/$defs/RigChain"
+            },
+            "type": "array"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/$defs/Issue"
+            },
+            "type": "array"
+          },
+          "method": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "skeleton": {
+            "$ref": "#/$defs/Skeleton"
+          },
+          "source_hash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "source_hash",
+          "method",
+          "skeleton",
+          "chains",
+          "issues"
+        ],
+        "type": "object"
+      },
+      "RigChain": {
+        "properties": {
+          "flexion_axis_world": {
+            "description": "Authored world-space flexion axis for deformation probes. Geometry-only\ncandidates omit this rather than inventing an anatomical palm plane.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "joints": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "role": {
+            "type": "string"
+          },
+          "source_chain": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "joints",
+          "role",
+          "source_chain"
+        ],
+        "type": "object"
+      },
+      "RoleCandidate": {
+        "properties": {
+          "evidence": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "score": {
+            "description": "Heuristic score; not a calibrated probability.",
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "role",
+          "score",
+          "evidence"
+        ],
+        "type": "object"
+      },
+      "Severity": {
+        "enum": [
+          "info",
+          "warning",
+          "error"
+        ],
+        "type": "string"
+      },
+      "Skeleton": {
+        "properties": {
+          "joints": {
+            "items": {
+              "$ref": "#/$defs/Joint"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "joints"
+        ],
+        "type": "object"
+      },
+      "SymmetryPair": {
+        "properties": {
+          "a": {
+            "type": "string"
+          },
+          "b": {
+            "type": "string"
+          },
+          "normalized_error": {
+            "format": "double",
+            "type": "number"
+          },
+          "plane_normal": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "plane_offset": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "plane_normal",
+          "plane_offset",
+          "normalized_error"
+        ],
+        "type": "object"
+      },
+      "Transform": {
+        "additionalProperties": false,
+        "properties": {
+          "rotation": {
+            "default": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          },
+          "scale": {
+            "default": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "translation": {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "analysis_status": {
+        "type": "string"
+      },
+      "blueprint": {
+        "$ref": "#/$defs/RigBlueprint"
+      },
+      "issues": {
+        "items": {
+          "$ref": "#/$defs/Issue"
+        },
+        "type": "array"
+      },
+      "method": {
+        "type": "string"
+      },
+      "metrics": true,
+      "morphology": {
+        "$ref": "#/$defs/MorphologyGraph"
+      },
+      "schema_version": {
+        "type": "string"
+      },
+      "source_hash": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "schema_version",
+      "source_hash",
+      "method",
+      "analysis_status",
+      "morphology",
+      "blueprint",
+      "metrics",
+      "issues"
+    ],
+    "title": "AnalysisResult",
+    "type": "object"
+  },
+  "anatomy_preflight_request": {
+    "$defs": {
+      "AnatomyClass": {
+        "enum": [
+          "human",
+          "stylized_humanoid",
+          "nonhuman",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "AnatomyKind": {
+        "enum": [
+          "head",
+          "body",
+          "hand",
+          "foot",
+          "chain",
+          "appendage"
+        ],
+        "type": "string"
+      },
+      "AnatomyPart": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/AnatomyKind"
+          },
+          "preserved_part_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "prior_form": {
+            "type": "string"
+          },
+          "source_form": {
+            "description": "Reviewed structural identity, e.g. human, cloven_hoof, six_limb_chain.",
+            "type": "string"
+          },
+          "strategy": {
+            "$ref": "#/$defs/AnatomyStrategy"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "source_form",
+          "prior_form",
+          "strategy",
+          "evidence",
+          "confirmed"
+        ],
+        "type": "object"
+      },
+      "AnatomyReview": {
+        "additionalProperties": false,
+        "properties": {
+          "anatomy_class": {
+            "$ref": "#/$defs/AnatomyClass"
+          },
+          "author": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "parts": {
+            "items": {
+              "$ref": "#/$defs/AnatomyPart"
+            },
+            "type": "array"
+          },
+          "prior_hash": {
+            "type": "string"
+          },
+          "source_hash": {
+            "type": "string"
+          },
+          "version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "anatomy_class",
+          "source_hash",
+          "prior_hash",
+          "author",
+          "evidence",
+          "parts"
+        ],
+        "type": "object"
+      },
+      "AnatomyStrategy": {
+        "enum": [
+          "fit_prior",
+          "preserve_source",
+          "unresolved"
+        ],
+        "type": "string"
+      },
+      "AnatomyUse": {
+        "enum": [
+          "fit_body",
+          "reconstruct_body",
+          "complete_body",
+          "fit_face",
+          "mpfb_batch"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "preserved_part_ids": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "prior_hash": {
+        "type": "string"
+      },
+      "review": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/AnatomyReview"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "source_hash": {
+        "type": "string"
+      },
+      "usage": {
+        "$ref": "#/$defs/AnatomyUse"
+      }
+    },
+    "required": [
+      "source_hash",
+      "prior_hash",
+      "usage"
+    ],
+    "title": "AnatomyRequest",
+    "type": "object"
+  },
+  "animation_recipe": {
+    "$defs": {
+      "ArmArticulation": {
+        "additionalProperties": false,
+        "properties": {
+          "forearm": {
+            "type": "string"
+          },
+          "forearm_twist_range_rad": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "max_flexion_rad": {
+            "format": "double",
+            "type": "number"
+          },
+          "neutral_palm_hinge_sign": {
+            "format": "double",
+            "type": "number"
+          },
+          "palm_landmarks": {
+            "description": "Index, middle and little finger bases define the palm frame.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "upper_arm": {
+            "type": "string"
+          },
+          "wrist": {
+            "type": "string"
+          },
+          "wrist_swing_limit_rad": {
+            "format": "double",
+            "type": "number"
+          },
+          "wrist_twist_range_rad": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "upper_arm",
+          "forearm",
+          "wrist",
+          "palm_landmarks",
+          "neutral_palm_hinge_sign",
+          "max_flexion_rad",
+          "forearm_twist_range_rad",
+          "wrist_swing_limit_rad",
+          "wrist_twist_range_rad"
+        ],
+        "type": "object"
+      },
+      "ArticulationLimit": {
+        "additionalProperties": false,
+        "description": "A characterized joint frame. The hinge axis is in the parent frame;\ntwist is about the outgoing bone in the joint frame.",
+        "properties": {
+          "hinge": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/HingeLimit"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "joint": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_swing_rad": {
+            "format": "double",
+            "type": "number"
+          },
+          "reference_rotation": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          },
+          "twist_axis": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "twist_range_rad": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "joint",
+          "reference_rotation",
+          "twist_axis",
+          "twist_range_rad",
+          "max_swing_rad"
+        ],
+        "type": "object"
+      },
+      "Attachment": {
+        "additionalProperties": false,
+        "properties": {
+          "driver": {
+            "type": "string"
+          },
+          "driver_chain_root": {
+            "default": null,
+            "description": "Optional arm root: allow a bounded translation of the primary grip so\nboth hands remain reachable after retargeting to different proportions.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "driver_offset": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Transform"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Prop-root transform relative to the driving hand. If omitted, calibrate\nfrom reference_clip/reference_time, or from the default node pose."
+          },
+          "end": {
+            "format": "double",
+            "type": "number"
+          },
+          "followers": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/GripFollower"
+            },
+            "type": "array"
+          },
+          "max_driver_rotation_rad": {
+            "default": 0.0,
+            "description": "Optional common rigid-prop rotation budget during constrained two-hand IK.",
+            "format": "double",
+            "type": "number"
+          },
+          "max_driver_translation_m": {
+            "default": 0.25,
+            "format": "double",
+            "type": "number"
+          },
+          "max_joint_angular_speed_rad_s": {
+            "default": null,
+            "description": "Optional temporal bound on each solved arm joint's local rotation.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "node": {
+            "description": "An existing rigid scene root or a weapon's existing driving bone.",
+            "type": "string"
+          },
+          "orientation_weight": {
+            "default": 1.0,
+            "description": "Squared meter-equivalent scale for orientation residuals during IK.",
+            "format": "double",
+            "type": "number"
+          },
+          "reference_clip": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference_time": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "release": {
+            "$ref": "#/$defs/ReleasePolicy",
+            "default": "hold_world"
+          },
+          "start": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "node",
+          "driver",
+          "start",
+          "end"
+        ],
+        "type": "object"
+      },
+      "BodyClearance": {
+        "additionalProperties": false,
+        "properties": {
+          "capsules": {
+            "items": {
+              "$ref": "#/$defs/SurfaceCapsule"
+            },
+            "type": "array"
+          },
+          "margin_m": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "pairs": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "tolerance_m": {
+            "default": 0.001,
+            "format": "double",
+            "type": "number"
+          },
+          "weight": {
+            "default": 100.0,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "capsules",
+          "pairs"
+        ],
+        "type": "object"
+      },
+      "CapsuleCrossSection": {
+        "additionalProperties": false,
+        "properties": {
+          "lateral_axis_local": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "radii_m": {
+            "description": "Lateral and front/back radii. The smaller is used for the rounded cap.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "lateral_axis_local",
+          "radii_m"
+        ],
+        "type": "object"
+      },
+      "CollisionCapsule": {
+        "additionalProperties": false,
+        "properties": {
+          "chain_root": {
+            "default": null,
+            "description": "Only this root and its descendants may be activated by this volume.\nNone makes it an obstacle; other explicit effectors may still move it.",
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "cross_section": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CapsuleCrossSection"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional elliptical cross section, transported with the start joint."
+          },
+          "end": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "interval": {
+            "default": [
+              0.0,
+              1.0
+            ],
+            "description": "Fractions along the start/end joint line; modest extrapolation allows\na hip or shoulder volume to extend beyond the joint centers.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "radius_m": {
+            "format": "double",
+            "type": "number"
+          },
+          "start": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "start",
+          "end",
+          "radius_m"
+        ],
+        "type": "object"
+      },
+      "CollisionConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "capsules": {
+            "items": {
+              "$ref": "#/$defs/CollisionCapsule"
+            },
+            "type": "array"
+          },
+          "margin_m": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "pairs": {
+            "items": {
+              "items": {
+                "format": "uint",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "tolerance_m": {
+            "default": 0.001,
+            "format": "double",
+            "type": "number"
+          },
+          "weight": {
+            "default": 100.0,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "capsules",
+          "pairs"
+        ],
+        "type": "object"
+      },
+      "Contact": {
+        "additionalProperties": false,
+        "properties": {
+          "chain_root": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "end": {
+            "format": "double",
+            "type": "number"
+          },
+          "joint": {
+            "type": "string"
+          },
+          "pole": {
+            "default": null,
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "position": {
+            "default": null,
+            "description": "Omission locks to the first baked contact sample, recorded in the report.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "position_axes": {
+            "default": [
+              true,
+              true,
+              true
+            ],
+            "items": {
+              "type": "boolean"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "rotation": {
+            "default": null,
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "start": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "joint",
+          "start",
+          "end"
+        ],
+        "type": "object"
+      },
+      "DigitShape": {
+        "additionalProperties": false,
+        "properties": {
+          "joints": {
+            "description": "Ordered base-to-tip chain, including a nondeforming tip when available.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "joints"
+        ],
+        "type": "object"
+      },
+      "GripFollower": {
+        "additionalProperties": false,
+        "properties": {
+          "chain_root": {
+            "description": "Restricts solving to this chain so it cannot move the primary hand.",
+            "type": "string"
+          },
+          "joint": {
+            "type": "string"
+          },
+          "offset": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Transform"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Desired wrist/fingertip frame in prop-local coordinates. If omitted,\ncapture it from the attachment's explicit reference pose."
+          },
+          "orientation": {
+            "default": true,
+            "type": "boolean"
+          },
+          "pole": {
+            "default": null,
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "joint",
+          "chain_root"
+        ],
+        "type": "object"
+      },
+      "HandCorrectiveObstacle": {
+        "additionalProperties": false,
+        "description": "Explicit rigid capsule in an existing scene node's local coordinates.",
+        "properties": {
+          "end": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "node": {
+            "type": "string"
+          },
+          "radius_m": {
+            "format": "double",
+            "type": "number"
+          },
+          "start": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "required": [
+          "node",
+          "start",
+          "end",
+          "radius_m"
+        ],
+        "type": "object"
+      },
+      "HandCorrectiveSampling": {
+        "additionalProperties": false,
+        "properties": {
+          "max_pose_error_rad": {
+            "format": "double",
+            "type": "number"
+          },
+          "max_samples": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_pose_error_rad",
+          "max_samples"
+        ],
+        "type": "object"
+      },
+      "HandShapeConstraint": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_rotation_fallback": {
+            "default": true,
+            "description": "If false, retain authored finger rotations and report surface failures.\nUse this for grips, where opening a fist is not a valid repair.",
+            "type": "boolean"
+          },
+          "digits": {
+            "items": {
+              "$ref": "#/$defs/DigitShape"
+            },
+            "type": "array"
+          },
+          "max_edge_growth_m": {
+            "default": 0.004,
+            "format": "double",
+            "type": "number"
+          },
+          "max_edge_ratio": {
+            "default": 1.2,
+            "description": "An edge may grow to reference_length * ratio + growth_m.",
+            "format": "double",
+            "type": "number"
+          },
+          "rebind_missing_digits": {
+            "default": false,
+            "description": "Explicitly repartition existing digit-weighted surface if some named\nchains have no independent weights. The wrist/digit region is repartitioned; body weights are preserved.",
+            "type": "boolean"
+          },
+          "surface_corrective": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/HandSurfaceCorrective"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "surface_repair": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/HandSurfaceRepair"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional fixed-pose skin optimization before the runtime pose guard."
+          },
+          "wrist": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "wrist",
+          "digits"
+        ],
+        "type": "object"
+      },
+      "HandSurfaceCorrective": {
+        "additionalProperties": false,
+        "properties": {
+          "global_iterations": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "iterations": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_correction_m": {
+            "format": "double",
+            "type": "number"
+          },
+          "obstacles": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/HandCorrectiveObstacle"
+            },
+            "type": "array"
+          },
+          "pose_sampling": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/HandCorrectiveSampling"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "reference_time": {
+            "format": "double",
+            "type": "number"
+          },
+          "source_weight": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "reference_time",
+          "iterations",
+          "global_iterations",
+          "source_weight",
+          "max_correction_m"
+        ],
+        "type": "object"
+      },
+      "HandSurfaceRepair": {
+        "additionalProperties": false,
+        "properties": {
+          "include_keys_and_midpoints": {
+            "default": false,
+            "type": "boolean"
+          },
+          "iterations": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_weight_change_l1": {
+            "format": "double",
+            "type": "number"
+          },
+          "reference_clips": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "samples_per_clip": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reference_clips",
+          "samples_per_clip",
+          "iterations",
+          "max_weight_change_l1"
+        ],
+        "type": "object"
+      },
+      "HingeLimit": {
+        "additionalProperties": false,
+        "properties": {
+          "axis_parent": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "range_rad": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "axis_parent",
+          "range_rad"
+        ],
+        "type": "object"
+      },
+      "JointLimit": {
+        "additionalProperties": false,
+        "properties": {
+          "joint": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_angle_rad": {
+            "description": "A cone bound relative to the reference local rotation; not an anatomy prior.",
+            "format": "double",
+            "type": "number"
+          },
+          "reference_rotation": {
+            "default": null,
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "joint",
+          "max_angle_rad"
+        ],
+        "type": "object"
+      },
+      "Layer": {
+        "additionalProperties": false,
+        "properties": {
+          "additive": {
+            "default": false,
+            "type": "boolean"
+          },
+          "clip": {
+            "type": "string"
+          },
+          "fade_in": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "fade_out": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "joints": {
+            "default": [],
+            "description": "Empty means all animation channels. Otherwise exact, unique node names.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "repeat": {
+            "default": false,
+            "type": "boolean"
+          },
+          "retarget": {
+            "$ref": "#/$defs/RetargetConfig",
+            "default": {
+              "align_reference_chains": false,
+              "alignment": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "distribute_wrist_twist": false,
+              "end": null,
+              "fps": 30.0,
+              "joint_map": {},
+              "min_target_coverage": 0.5,
+              "name": "retargeted",
+              "root_motion": true,
+              "root_scale": null,
+              "start": null
+            }
+          },
+          "source": {
+            "default": null,
+            "description": "If omitted, use the target's own animation. Paths are relative to the recipe.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_end": {
+            "default": null,
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "source_start": {
+            "default": null,
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "speed": {
+            "default": 1.0,
+            "format": "double",
+            "type": "number"
+          },
+          "timeline_start": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "weight": {
+            "default": 1.0,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "clip"
+        ],
+        "type": "object"
+      },
+      "PropAsset": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "Unique name of the new scene root, used by Attachment::node.",
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "transform": {
+            "$ref": "#/$defs/Transform",
+            "default": {
+              "rotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ],
+              "scale": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "translation": [
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          }
+        },
+        "required": [
+          "path",
+          "name"
+        ],
+        "type": "object"
+      },
+      "ReleasePolicy": {
+        "oneOf": [
+          {
+            "const": "hold_world",
+            "description": "Keep the last held world transform after end; no gravity is simulated.",
+            "type": "string"
+          },
+          {
+            "const": "source",
+            "description": "Resume the underlying animation after end; transitions are caller-authored.",
+            "type": "string"
+          }
+        ]
+      },
+      "RetargetConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "align_reference_chains": {
+            "default": false,
+            "description": "Optionally align mapped limb directions to the source default posture\nbefore transferring motion. Bilateral hip/shoulder landmarks and named\nfinger roots define full axial/palm frames instead of leaving roll free.",
+            "type": "boolean"
+          },
+          "alignment": {
+            "default": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "description": "A world rotation aligning source reference axes to target reference axes.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          },
+          "distribute_wrist_twist": {
+            "default": false,
+            "description": "Put axial hand rotation on the forearm while preserving the world hand\npose. Requires uniquely mapped direct forearm/hand pairs.",
+            "type": "boolean"
+          },
+          "end": {
+            "default": null,
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "fps": {
+            "default": 30.0,
+            "format": "double",
+            "type": "number"
+          },
+          "joint_map": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "description": "Target-name -> source-name overrides. Names must be unique.",
+            "type": "object"
+          },
+          "min_target_coverage": {
+            "default": 0.5,
+            "format": "double",
+            "type": "number"
+          },
+          "name": {
+            "default": "retargeted",
+            "type": "string"
+          },
+          "root_motion": {
+            "default": true,
+            "type": "boolean"
+          },
+          "root_scale": {
+            "default": null,
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "start": {
+            "default": null,
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "RigidBoneRegion": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "type": "string"
+          },
+          "feather": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "influences": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "interval": {
+            "description": "Rigid interval along the bone, followed by a smooth falloff on each side.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "joint": {
+            "type": "string"
+          },
+          "minimum_region_weight": {
+            "format": "double",
+            "type": "number"
+          },
+          "radius_quantile": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "joint",
+          "end",
+          "influences",
+          "interval",
+          "feather",
+          "minimum_region_weight",
+          "radius_quantile"
+        ],
+        "type": "object"
+      },
+      "SolveConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "articulations": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/ArticulationLimit"
+            },
+            "type": "array"
+          },
+          "collision": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CollisionConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "damping": {
+            "default": 0.03,
+            "format": "double",
+            "type": "number"
+          },
+          "iterations": {
+            "default": 80,
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "limits": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/JointLimit"
+            },
+            "type": "array"
+          },
+          "max_step_rad": {
+            "default": 0.25,
+            "format": "double",
+            "type": "number"
+          },
+          "posture_weight": {
+            "default": 1e-05,
+            "format": "double",
+            "type": "number"
+          },
+          "root_translation": {
+            "default": false,
+            "type": "boolean"
+          },
+          "rotation_tolerance_rad": {
+            "default": 0.01,
+            "format": "double",
+            "type": "number"
+          },
+          "tolerance_m": {
+            "default": 0.001,
+            "format": "double",
+            "type": "number"
+          },
+          "warm_start_two_bone": {
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "SurfaceCapsule": {
+        "additionalProperties": false,
+        "properties": {
+          "chain_root": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "end": {
+            "type": "string"
+          },
+          "interval": {
+            "default": [
+              0.0,
+              1.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "lateral_reference": {
+            "default": null,
+            "description": "Two joints defining a lateral direction in this model's reference pose.\nWhen supplied, fit lateral and front/back widths independently.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "radius_m": {
+            "default": null,
+            "description": "Explicit radius, or estimate it from the actual weighted surface.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "radius_quantile": {
+            "default": 0.95,
+            "format": "double",
+            "type": "number"
+          },
+          "skin_joints": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "start": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "start",
+          "end"
+        ],
+        "type": "object"
+      },
+      "SurfaceFloor": {
+        "additionalProperties": false,
+        "properties": {
+          "align_to_ground": {
+            "default": false,
+            "description": "Explicit walking preview correction. Also lowers floating support to\nthe plane; leave disabled for jumping or deliberately airborne motion.",
+            "type": "boolean"
+          },
+          "height_m": {
+            "format": "double",
+            "type": "number"
+          },
+          "max_lift_m": {
+            "format": "double",
+            "type": "number"
+          },
+          "preserve_source_height": {
+            "default": false,
+            "description": "After collision solving, keep the source frame's support height. This\nallows a bounded lowering as well as raising, preserving airborne phases.",
+            "type": "boolean"
+          },
+          "root": {
+            "type": "string"
+          },
+          "support_joints": {
+            "description": "Exact skin joint names defining the surface to protect from the plane.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "root",
+          "support_joints",
+          "height_m",
+          "max_lift_m"
+        ],
+        "type": "object"
+      },
+      "TemporalCorrection": {
+        "additionalProperties": false,
+        "properties": {
+          "decay_seconds": {
+            "format": "double",
+            "type": "number"
+          },
+          "joints": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "joints",
+          "decay_seconds"
+        ],
+        "type": "object"
+      },
+      "Transform": {
+        "additionalProperties": false,
+        "properties": {
+          "rotation": {
+            "default": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          },
+          "scale": {
+            "default": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "translation": {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "arm_articulations": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/ArmArticulation"
+        },
+        "type": "array"
+      },
+      "asset": {
+        "type": "string"
+      },
+      "attachments": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/Attachment"
+        },
+        "type": "array"
+      },
+      "body_clearance": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/BodyClearance"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Geometry-fitted capsules and selected separation pairs. Independent of\nspecies or fixed bone names; the caller supplies a characterized rig."
+      },
+      "contacts": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/Contact"
+        },
+        "type": "array"
+      },
+      "distribute_twist": {
+        "default": [],
+        "description": "Exact child-joint names whose axial rotation is distributed to their\ndirect parent after all constraints. The child's world pose is kept.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "duration": {
+        "format": "double",
+        "type": "number"
+      },
+      "fps": {
+        "default": 30.0,
+        "format": "double",
+        "type": "number"
+      },
+      "hand_shapes": {
+        "default": [],
+        "description": "Target digit lengths plus a bound on new skin-edge elongation.",
+        "items": {
+          "$ref": "#/$defs/HandShapeConstraint"
+        },
+        "type": "array"
+      },
+      "layers": {
+        "items": {
+          "$ref": "#/$defs/Layer"
+        },
+        "type": "array"
+      },
+      "name": {
+        "type": "string"
+      },
+      "props": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/PropAsset"
+        },
+        "type": "array"
+      },
+      "rigid_regions": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/RigidBoneRegion"
+        },
+        "type": "array"
+      },
+      "schema_version": {
+        "type": "string"
+      },
+      "solver": {
+        "$ref": "#/$defs/SolveConfig",
+        "default": {
+          "articulations": [],
+          "collision": null,
+          "damping": 0.03,
+          "iterations": 80,
+          "limits": [],
+          "max_step_rad": 0.25,
+          "posture_weight": 1e-05,
+          "root_translation": false,
+          "rotation_tolerance_rad": 0.01,
+          "tolerance_m": 0.001,
+          "warm_start_two_bone": true
+        }
+      },
+      "surface_floor": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/SurfaceFloor"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Explicit skin-region floor protection; raises the root only as needed."
+      },
+      "temporal_correction": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/TemporalCorrection"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      }
+    },
+    "required": [
+      "schema_version",
+      "asset",
+      "name",
+      "duration",
+      "layers"
+    ],
+    "title": "AnimationRecipe",
+    "type": "object"
+  },
+  "binding_config": {
+    "$defs": {
+      "BindMethod": {
+        "enum": [
+          "volume_geodesic",
+          "surface_distance"
+        ],
+        "type": "string"
+      },
+      "SurfaceMask": {
+        "additionalProperties": false,
+        "properties": {
+          "geometry_hash": {
+            "description": "Hash of local position and triangle arrays, independent of skin weights.",
+            "type": "string"
+          },
+          "mesh": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "vertices": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "mesh",
+          "geometry_hash",
+          "vertices"
+        ],
+        "type": "object"
+      },
+      "WeightRegion": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_joints": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "excluded_joints": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mask": {
+            "$ref": "#/$defs/SurfaceMask"
+          }
+        },
+        "required": [
+          "id",
+          "mask",
+          "evidence"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "The surface method requires an explicit fitted blueprint. It is useful for\nlayered garments/open meshes, but does not infer their anatomical attachment.",
+    "properties": {
+      "distance_power": {
+        "default": 4.0,
+        "format": "double",
+        "type": "number"
+      },
+      "envelope_radii_m": {
+        "additionalProperties": {
+          "format": "double",
+          "type": "number"
+        },
+        "default": {},
+        "description": "Optional capsule radii keyed by blueprint joint ID. A nearby hand should\nnot acquire a detached skirt simply because the garment is close to it.",
+        "type": "object"
+      },
+      "maximum_bind_distance_m": {
+        "default": 0.4,
+        "format": "double",
+        "type": "number"
+      },
+      "method": {
+        "$ref": "#/$defs/BindMethod",
+        "default": "volume_geodesic"
+      },
+      "minimum_falloff_m": {
+        "default": 0.004,
+        "format": "double",
+        "type": "number"
+      },
+      "smoothing_iterations": {
+        "default": 8,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "surface_regions": {
+        "default": [],
+        "description": "Exact, geometry-checked regions from calibrated visual boxes or authoring.",
+        "items": {
+          "$ref": "#/$defs/WeightRegion"
+        },
+        "type": "array"
+      }
+    },
+    "title": "BindConfig",
+    "type": "object"
+  },
+  "body_reconstruct_config": {
+    "$defs": {
+      "AnatomyClass": {
+        "enum": [
+          "human",
+          "stylized_humanoid",
+          "nonhuman",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "AnatomyKind": {
+        "enum": [
+          "head",
+          "body",
+          "hand",
+          "foot",
+          "chain",
+          "appendage"
+        ],
+        "type": "string"
+      },
+      "AnatomyPart": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/AnatomyKind"
+          },
+          "preserved_part_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "prior_form": {
+            "type": "string"
+          },
+          "source_form": {
+            "description": "Reviewed structural identity, e.g. human, cloven_hoof, six_limb_chain.",
+            "type": "string"
+          },
+          "strategy": {
+            "$ref": "#/$defs/AnatomyStrategy"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "source_form",
+          "prior_form",
+          "strategy",
+          "evidence",
+          "confirmed"
+        ],
+        "type": "object"
+      },
+      "AnatomyStrategy": {
+        "enum": [
+          "fit_prior",
+          "preserve_source",
+          "unresolved"
+        ],
+        "type": "string"
+      },
+      "BodyModelConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "initial_step_fraction": {
+            "default": 0.2,
+            "format": "double",
+            "type": "number"
+          },
+          "landmark_joint_map": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {},
+            "description": "Explicit anatomical correspondence; body-model joint names are not\nassumed equivalent to the dressed source's skeleton vocabulary.",
+            "type": "object"
+          },
+          "maximum_evaluations": {
+            "default": 300,
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "optimize": {
+            "default": true,
+            "type": "boolean"
+          },
+          "parameters": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/BodyParameter"
+            },
+            "type": "array"
+          },
+          "radial_parameters": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/RadialParameter"
+            },
+            "type": "array"
+          },
+          "rounds": {
+            "default": 4,
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sample_budget": {
+            "default": 1800,
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "visible_skin_local_refinement": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "BodyParameter": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "default": "",
+            "type": "string"
+          },
+          "joint_deltas": {
+            "additionalProperties": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "default": {},
+            "description": "Author-supplied joint-center movement for unit shape change, Y-up meters.",
+            "type": "object"
+          },
+          "maximum": {
+            "default": 0.75,
+            "format": "double",
+            "type": "number"
+          },
+          "minimum": {
+            "default": -0.5,
+            "format": "double",
+            "type": "number"
+          },
+          "morph_target": {
+            "default": "",
+            "type": "string"
+          },
+          "prior_value": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "prior_weight": {
+            "default": 0.0001,
+            "format": "double",
+            "type": "number"
+          },
+          "value": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "EnvelopeAxis": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "prior_a": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "prior_b": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "prior_radius_m": {
+            "format": "double",
+            "type": "number"
+          },
+          "target_a": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "target_b": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "prior_a",
+          "prior_b",
+          "target_a",
+          "target_b",
+          "prior_radius_m"
+        ],
+        "type": "object"
+      },
+      "InterfaceSection": {
+        "additionalProperties": false,
+        "properties": {
+          "center_world": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "normal_world": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "radii_m": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "center_world",
+          "normal_world",
+          "radii_m"
+        ],
+        "type": "object"
+      },
+      "Landmark": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "prior": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "strength": {
+            "default": 1.0,
+            "format": "double",
+            "type": "number"
+          },
+          "target": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "prior",
+          "target"
+        ],
+        "type": "object"
+      },
+      "ObservedSkin": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "default": "",
+            "type": "string"
+          },
+          "maximum_distance_m": {
+            "default": 0.04,
+            "format": "double",
+            "type": "number"
+          },
+          "minimum_normal_cosine": {
+            "default": 0.2,
+            "format": "double",
+            "type": "number"
+          },
+          "prior_max": {
+            "default": [
+              10.0,
+              10.0,
+              10.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "prior_min": {
+            "default": [
+              -10.0,
+              -10.0,
+              -10.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "source": {
+            "$ref": "#/$defs/SurfaceMask",
+            "default": {
+              "geometry_hash": "",
+              "mesh": 0,
+              "vertices": []
+            }
+          },
+          "strength": {
+            "default": 24.0,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "PoseSegment": {
+        "additionalProperties": false,
+        "properties": {
+          "from_landmark": {
+            "type": "string"
+          },
+          "prior_joint": {
+            "type": "string"
+          },
+          "radial_scale": {
+            "default": 1.0,
+            "format": "double",
+            "type": "number"
+          },
+          "to_landmark": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "prior_joint",
+          "from_landmark",
+          "to_landmark"
+        ],
+        "type": "object"
+      },
+      "PreservedPart": {
+        "additionalProperties": false,
+        "properties": {
+          "attachment_joint": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "interface": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SkinInterface"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "replace_plane": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReplacementPlane"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional half-space gate, in the prior's reference coordinates.\nRemoves only the distal side of a wrist/neck, not a broad hand box."
+          },
+          "replace_prior_max": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "replace_prior_min": {
+            "description": "Replacement region in the prior's reference coordinates. The donor's\ncorresponding head/hand must not coexist with the observed source part.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "skin_remesh": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SkinRemeshConfig"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "source": {
+            "$ref": "#/$defs/SurfaceMask",
+            "description": "Exact source surface; its positions, UV, normals and textures are copied."
+          },
+          "source_clip": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReplacementPlane"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional exact cut of the observed static surface, retaining the\nnegative half-space. Edge vertices and FLOAT attributes are interpolated."
+          },
+          "source_translation_world": {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "description": "Rigid placement after the original surface is cut, in world Y-up metres.\nLocal face/UV/normal data remain unchanged; zero preserves old behavior.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "source_triangles": {
+            "default": [],
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "replace_prior_min",
+          "replace_prior_max"
+        ],
+        "type": "object"
+      },
+      "RadialParameter": {
+        "additionalProperties": false,
+        "description": "A positive local girth control on an explicitly mapped articulation segment.\nThe authored weights keep unrelated regions out of its deformation domain.",
+        "properties": {
+          "id": {
+            "default": "",
+            "type": "string"
+          },
+          "maximum": {
+            "default": 1.25,
+            "format": "double",
+            "type": "number"
+          },
+          "minimum": {
+            "default": 0.65,
+            "format": "double",
+            "type": "number"
+          },
+          "prior_joint": {
+            "default": "",
+            "type": "string"
+          },
+          "prior_value": {
+            "default": 1.0,
+            "format": "double",
+            "type": "number"
+          },
+          "prior_weight": {
+            "default": 1e-06,
+            "format": "double",
+            "type": "number"
+          },
+          "value": {
+            "default": 1.0,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "ReplacementPlane": {
+        "additionalProperties": false,
+        "properties": {
+          "normal": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "origin": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "world_space": {
+            "default": false,
+            "description": "Cut in the fitted world surface instead of the unposed reference.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "origin",
+          "normal"
+        ],
+        "type": "object"
+      },
+      "SectionControl": {
+        "additionalProperties": false,
+        "properties": {
+          "coordinate_m": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "offset_m": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "scale": {
+            "default": 1.0,
+            "format": "double",
+            "type": "number"
+          },
+          "target_back_m": {
+            "default": null,
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "target_front_m": {
+            "default": null,
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "SectionProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "axis": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "controls": {
+            "items": {
+              "$ref": "#/$defs/SectionControl"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "lateral_inner_m": {
+            "format": "double",
+            "type": "number"
+          },
+          "lateral_outer_m": {
+            "format": "double",
+            "type": "number"
+          },
+          "origin": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "transverse": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "origin",
+          "axis",
+          "transverse",
+          "lateral_inner_m",
+          "lateral_outer_m",
+          "controls"
+        ],
+        "type": "object"
+      },
+      "SkinInterface": {
+        "additionalProperties": false,
+        "properties": {
+          "center_world": {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "guide_section": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/InterfaceSection"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "maximum_gap_m": {
+            "default": 0.07,
+            "format": "double",
+            "type": "number"
+          },
+          "maximum_ring_radius_m": {
+            "default": 0.12,
+            "format": "double",
+            "type": "number"
+          },
+          "occluding_parts": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "search_distance_m": {
+            "default": 0.08,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "SkinRemeshConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "feature_angle_degrees": {
+            "default": 45.0,
+            "format": "double",
+            "type": "number"
+          },
+          "maximum_collapses": {
+            "default": 20000,
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maximum_sampled_surface_error_m": {
+            "default": 0.0006,
+            "format": "double",
+            "type": "number"
+          },
+          "maximum_uv_error": {
+            "default": 0.0015,
+            "format": "double",
+            "type": "number"
+          },
+          "skin": {
+            "$ref": "#/$defs/SurfaceMask",
+            "default": {
+              "geometry_hash": "",
+              "mesh": 0,
+              "vertices": []
+            }
+          },
+          "target_edge_m": {
+            "default": 0.004,
+            "format": "double",
+            "type": "number"
+          },
+          "target_face_fraction": {
+            "default": 0.65,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "SurfaceMask": {
+        "additionalProperties": false,
+        "properties": {
+          "geometry_hash": {
+            "description": "Hash of local position and triangle arrays, independent of skin weights.",
+            "type": "string"
+          },
+          "mesh": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "vertices": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "mesh",
+          "geometry_hash",
+          "vertices"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "allow_incomplete_interfaces": {
+        "default": false,
+        "description": "Diagnostic exports only. Normal builds reject any requested interface\nwhich was not constructed successfully, before publishing a bundle.",
+        "type": "boolean"
+      },
+      "anatomy": {
+        "additionalProperties": false,
+        "default": null,
+        "properties": {
+          "anatomy_class": {
+            "$ref": "#/$defs/AnatomyClass"
+          },
+          "author": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "parts": {
+            "items": {
+              "$ref": "#/$defs/AnatomyPart"
+            },
+            "type": "array"
+          },
+          "prior_hash": {
+            "type": "string"
+          },
+          "source_hash": {
+            "type": "string"
+          },
+          "version": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "anatomy_class",
+          "source_hash",
+          "prior_hash",
+          "author",
+          "evidence",
+          "parts"
+        ],
+        "type": "object"
+      },
+      "body_model": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/BodyModelConfig"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "clearance_m": {
+        "default": 0.003,
+        "format": "double",
+        "type": "number"
+      },
+      "default_color_srgb": {
+        "default": [
+          0.72,
+          0.5,
+          0.36
+        ],
+        "items": {
+          "format": "double",
+          "type": "number"
+        },
+        "maxItems": 3,
+        "minItems": 3,
+        "type": "array"
+      },
+      "envelope_axes": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/EnvelopeAxis"
+        },
+        "type": "array"
+      },
+      "estimate_skin_color_from_observations": {
+        "default": true,
+        "type": "boolean"
+      },
+      "iterations": {
+        "default": 10,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "landmark_radius_m": {
+        "default": 0.32,
+        "format": "double",
+        "type": "number"
+      },
+      "landmark_softening": {
+        "default": 0.0001,
+        "format": "double",
+        "type": "number"
+      },
+      "landmarks": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/Landmark"
+        },
+        "type": "array"
+      },
+      "linear_iterations": {
+        "default": 120,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "maximum_envelope_shrink_m": {
+        "default": 0.1,
+        "format": "double",
+        "type": "number"
+      },
+      "observed_skin": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/ObservedSkin"
+        },
+        "type": "array"
+      },
+      "pose_segments": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/PoseSegment"
+        },
+        "type": "array"
+      },
+      "preserved_parts": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/PreservedPart"
+        },
+        "type": "array"
+      },
+      "prior": {
+        "default": "",
+        "type": "string"
+      },
+      "prior_source_hash": {
+        "default": "",
+        "type": "string"
+      },
+      "prior_strength": {
+        "default": 0.18,
+        "format": "double",
+        "type": "number"
+      },
+      "section_profiles": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/SectionProfile"
+        },
+        "type": "array"
+      },
+      "skin_appearance_samples": {
+        "default": [],
+        "description": "Representative source skin for diffuse/PBR estimation. Kept separate\nfrom geometric constraints so a beard, collar seam or baked highlight\ncannot dominate the inferred hidden body's material.",
+        "items": {
+          "$ref": "#/$defs/SurfaceMask"
+        },
+        "type": "array"
+      },
+      "skin_fit_largest_component_only": {
+        "default": true,
+        "type": "boolean"
+      },
+      "source_hash": {
+        "default": "",
+        "type": "string"
+      }
+    },
+    "title": "ReconstructConfig",
+    "type": "object"
+  },
+  "effector": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "chain_root": {
+        "default": null,
+        "format": "uint",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "joint": {
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "pole": {
+        "default": null,
+        "items": {
+          "format": "double",
+          "type": "number"
+        },
+        "maxItems": 3,
+        "minItems": 3,
+        "type": [
+          "array",
+          "null"
+        ]
+      },
+      "position": {
+        "items": {
+          "format": "double",
+          "type": "number"
+        },
+        "maxItems": 3,
+        "minItems": 3,
+        "type": "array"
+      },
+      "position_axes": {
+        "default": [
+          true,
+          true,
+          true
+        ],
+        "description": "World axes constrained by this target. For grounded stance, X/Z may be\nlocked while the independently measured sole controls vertical height.",
+        "items": {
+          "type": "boolean"
+        },
+        "maxItems": 3,
+        "minItems": 3,
+        "type": "array"
+      },
+      "position_weight": {
+        "default": 1.0,
+        "format": "double",
+        "type": "number"
+      },
+      "rotation": {
+        "default": null,
+        "items": {
+          "format": "double",
+          "type": "number"
+        },
+        "maxItems": 4,
+        "minItems": 4,
+        "type": [
+          "array",
+          "null"
+        ]
+      },
+      "rotation_weight": {
+        "default": 1.0,
+        "format": "double",
+        "type": "number"
+      }
+    },
+    "required": [
+      "joint",
+      "position"
+    ],
+    "title": "Effector",
+    "type": "object"
+  },
+  "grounding_config": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "depth_tolerance": {
+        "default": 0.004,
+        "format": "double",
+        "type": "number"
+      },
+      "minimum_confidence": {
+        "default": 0.55,
+        "format": "double",
+        "type": "number"
+      },
+      "minimum_view_angle_degrees": {
+        "default": 15.0,
+        "format": "double",
+        "type": "number"
+      },
+      "minimum_views": {
+        "default": 2,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "minimum_visible_views": {
+        "default": 1,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "title": "GroundingConfig",
+    "type": "object"
+  },
+  "repair_config": {
+    "$defs": {
+      "SurfaceContactConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "clip": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "epsilon_m": {
+            "default": 1e-06,
+            "format": "double",
+            "type": "number"
+          },
+          "maximum_reported_pairs": {
+            "default": 200,
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "regions": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/SurfaceMask"
+            },
+            "type": "array"
+          },
+          "times": {
+            "default": [],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "SurfaceMask": {
+        "additionalProperties": false,
+        "properties": {
+          "geometry_hash": {
+            "description": "Hash of local position and triangle arrays, independent of skin weights.",
+            "type": "string"
+          },
+          "mesh": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "vertices": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "mesh",
+          "geometry_hash",
+          "vertices"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "clips": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "extra_times": {
+        "default": [],
+        "items": {
+          "format": "double",
+          "type": "number"
+        },
+        "type": "array"
+      },
+      "max_edge_growth_m": {
+        "default": 0.03,
+        "format": "double",
+        "type": "number"
+      },
+      "max_rounds": {
+        "default": null,
+        "description": "None lets the agent decide when to stop; each individual step is bounded.",
+        "format": "uint",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "max_seam_gap_m": {
+        "default": 0.001,
+        "format": "double",
+        "type": "number"
+      },
+      "samples_per_clip": {
+        "default": 33,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "surface_contacts": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/SurfaceContactConfig"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional additive gate, frozen after installation in an existing session."
+      }
+    },
+    "title": "RepairConfig",
+    "type": "object"
+  },
+  "repair_plan": {
+    "$defs": {
+      "RepairRegion": {
+        "additionalProperties": false,
+        "properties": {
+          "exclude_joints": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "feather_m": {
+            "default": 0.01,
+            "format": "double",
+            "type": "number"
+          },
+          "mask": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SurfaceMask"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "max": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "min": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "required": [
+          "min",
+          "max"
+        ],
+        "type": "object"
+      },
+      "RepairStrategy": {
+        "oneOf": [
+          {
+            "enum": [
+              "relax_strain",
+              "exclude_influences",
+              "accept"
+            ],
+            "type": "string"
+          },
+          {
+            "const": "weld_seams",
+            "description": "Couple render duplicates proven to share a manifold geometric seam.",
+            "type": "string"
+          },
+          {
+            "const": "separate_surfaces",
+            "description": "Preserve reference-side ordering of triangles that cross in sampled poses.",
+            "type": "string"
+          },
+          {
+            "const": "update_budget",
+            "description": "Change only the optional round budget, with a persistent audit record.",
+            "type": "string"
+          },
+          {
+            "const": "report_unresolved",
+            "description": "Preserve the best numeric result while explicitly failing visual review.",
+            "type": "string"
+          }
+        ]
+      },
+      "SurfaceContactConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "clip": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "epsilon_m": {
+            "default": 1e-06,
+            "format": "double",
+            "type": "number"
+          },
+          "maximum_reported_pairs": {
+            "default": 200,
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "regions": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/SurfaceMask"
+            },
+            "type": "array"
+          },
+          "times": {
+            "default": [],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "SurfaceMask": {
+        "additionalProperties": false,
+        "properties": {
+          "geometry_hash": {
+            "description": "Hash of local position and triangle arrays, independent of skin weights.",
+            "type": "string"
+          },
+          "mesh": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "vertices": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "mesh",
+          "geometry_hash",
+          "vertices"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "contact_smoothing": {
+        "default": 0.5,
+        "description": "Smooth corrections, not the original weights, across adjacent surface vertices.",
+        "format": "double",
+        "type": "number"
+      },
+      "contact_weight_change_l1": {
+        "default": 0.05,
+        "description": "Additional L1 trust radius around the start of this surface-repair step.",
+        "format": "double",
+        "type": "number"
+      },
+      "continue_from_round": {
+        "default": null,
+        "description": "Continue a promising rejected candidate while retaining the current best.",
+        "format": "uint",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "diagnosis": {
+        "default": "",
+        "type": "string"
+      },
+      "evidence": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "expected_candidate_hash": {
+        "default": null,
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "expected_round": {
+        "default": 0,
+        "description": "Must equal the number of completed correction rounds in session.json.",
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "iterations": {
+        "default": 32,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "max_weight_change_l1": {
+        "default": 0.35,
+        "format": "double",
+        "type": "number"
+      },
+      "protect_joints": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "regions": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/RepairRegion"
+        },
+        "type": "array"
+      },
+      "resume_after_review": {
+        "default": false,
+        "description": "Explicitly continue an unresolved review without resetting the ledger.",
+        "type": "boolean"
+      },
+      "round_budget": {
+        "default": null,
+        "format": "uint",
+        "minimum": 0,
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "strategy": {
+        "$ref": "#/$defs/RepairStrategy",
+        "default": "relax_strain"
+      },
+      "surface_contacts": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/SurfaceContactConfig"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Installs an additive surface-crossing gate; cannot relax an existing one."
+      }
+    },
+    "title": "RepairPlan",
+    "type": "object"
+  },
+  "retarget_config": {
+    "$defs": {
+      "LimbTrajectory": {
+        "additionalProperties": false,
+        "properties": {
+          "max_orientation_deviation_rad": {
+            "default": null,
+            "description": "Optional limit around the observed orientation transported with the\nbody anchor. A long raised hock must not inherit an unrestricted human\nheel-strike roll. None retains the full FK orientation.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "position_scale": {
+            "default": null,
+            "description": "Scale the source end-point displacement around the observed target\nreference offset. Defaults to the configured root-motion scale.",
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "target_anchor": {
+            "description": "A mapped body anchor, for example Hips. Source endpoints/anchor are\nresolved from the verified mapping, not guessed from species names.",
+            "type": "string"
+          },
+          "target_chain": {
+            "description": "Root, middle, orientation joint, end joint. The first three form a\ndirect two-bone IK chain; the last segment retains its FK orientation.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          }
+        },
+        "required": [
+          "target_chain",
+          "target_anchor"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "align_reference_chains": {
+        "default": false,
+        "description": "Optionally align mapped limb directions to the source default posture\nbefore transferring motion. Bilateral hip/shoulder landmarks and named\nfinger roots define full axial/palm frames instead of leaving roll free.",
+        "type": "boolean"
+      },
+      "alignment": {
+        "default": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "description": "A world rotation aligning source reference axes to target reference axes.",
+        "items": {
+          "format": "double",
+          "type": "number"
+        },
+        "maxItems": 4,
+        "minItems": 4,
+        "type": "array"
+      },
+      "distribute_wrist_twist": {
+        "default": false,
+        "description": "Put axial hand rotation on the forearm while preserving the world hand\npose. Requires uniquely mapped direct forearm/hand pairs.",
+        "type": "boolean"
+      },
+      "end": {
+        "default": null,
+        "format": "double",
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "fps": {
+        "default": 30.0,
+        "format": "double",
+        "type": "number"
+      },
+      "joint_map": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "default": {},
+        "description": "Target-name -> source-name overrides. Names must be unique.",
+        "type": "object"
+      },
+      "limb_trajectories": {
+        "default": [],
+        "description": "Optional end-point trajectory adaptation for reviewed limb chains with\ndifferent proportions. Timing still comes from the source clip.",
+        "items": {
+          "$ref": "#/$defs/LimbTrajectory"
+        },
+        "type": "array"
+      },
+      "min_target_coverage": {
+        "default": 0.5,
+        "format": "double",
+        "type": "number"
+      },
+      "name": {
+        "default": "retargeted",
+        "type": "string"
+      },
+      "preserve_reference_joints": {
+        "default": [],
+        "description": "Explicit target joints whose reference world rotation must retain the\nobserved target posture while other chains are aligned. For example,\ndo not straighten a reviewed digitigrade leg into a human reference.\nThis does not infer anatomy or replace motion/contact validation.",
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "root_motion": {
+        "default": true,
+        "type": "boolean"
+      },
+      "root_scale": {
+        "default": null,
+        "format": "double",
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "start": {
+        "default": null,
+        "format": "double",
+        "type": [
+          "number",
+          "null"
+        ]
+      }
+    },
+    "title": "RetargetConfig",
+    "type": "object"
+  },
+  "rig_blueprint": {
+    "$defs": {
+      "Issue": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/$defs/Severity"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message"
+        ],
+        "type": "object"
+      },
+      "Joint": {
+        "properties": {
+          "deform": {
+            "default": false,
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "matrix": {
+            "description": "Preserves a static affine node exactly, including shear. Animated nodes use TRS.",
+            "items": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "parent": {
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "rest": {
+            "$ref": "#/$defs/Transform"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "rest"
+        ],
+        "type": "object"
+      },
+      "RigChain": {
+        "properties": {
+          "flexion_axis_world": {
+            "description": "Authored world-space flexion axis for deformation probes. Geometry-only\ncandidates omit this rather than inventing an anatomical palm plane.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "joints": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "role": {
+            "type": "string"
+          },
+          "source_chain": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "joints",
+          "role",
+          "source_chain"
+        ],
+        "type": "object"
+      },
+      "Severity": {
+        "enum": [
+          "info",
+          "warning",
+          "error"
+        ],
+        "type": "string"
+      },
+      "Skeleton": {
+        "properties": {
+          "joints": {
+            "items": {
+              "$ref": "#/$defs/Joint"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "joints"
+        ],
+        "type": "object"
+      },
+      "Transform": {
+        "additionalProperties": false,
+        "properties": {
+          "rotation": {
+            "default": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          },
+          "scale": {
+            "default": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "translation": {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+      "chains": {
+        "items": {
+          "$ref": "#/$defs/RigChain"
+        },
+        "type": "array"
+      },
+      "issues": {
+        "items": {
+          "$ref": "#/$defs/Issue"
+        },
+        "type": "array"
+      },
+      "method": {
+        "type": "string"
+      },
+      "schema_version": {
+        "type": "string"
+      },
+      "skeleton": {
+        "$ref": "#/$defs/Skeleton"
+      },
+      "source_hash": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "schema_version",
+      "source_hash",
+      "method",
+      "skeleton",
+      "chains",
+      "issues"
+    ],
+    "title": "RigBlueprint",
+    "type": "object"
+  },
+  "solve_config": {
+    "$defs": {
+      "ArticulationLimit": {
+        "additionalProperties": false,
+        "description": "A characterized joint frame. The hinge axis is in the parent frame;\ntwist is about the outgoing bone in the joint frame.",
+        "properties": {
+          "hinge": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/HingeLimit"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "joint": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_swing_rad": {
+            "format": "double",
+            "type": "number"
+          },
+          "reference_rotation": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          },
+          "twist_axis": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "twist_range_rad": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "joint",
+          "reference_rotation",
+          "twist_axis",
+          "twist_range_rad",
+          "max_swing_rad"
+        ],
+        "type": "object"
+      },
+      "CapsuleCrossSection": {
+        "additionalProperties": false,
+        "properties": {
+          "lateral_axis_local": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "radii_m": {
+            "description": "Lateral and front/back radii. The smaller is used for the rounded cap.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "lateral_axis_local",
+          "radii_m"
+        ],
+        "type": "object"
+      },
+      "CollisionCapsule": {
+        "additionalProperties": false,
+        "properties": {
+          "chain_root": {
+            "default": null,
+            "description": "Only this root and its descendants may be activated by this volume.\nNone makes it an obstacle; other explicit effectors may still move it.",
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "cross_section": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CapsuleCrossSection"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional elliptical cross section, transported with the start joint."
+          },
+          "end": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "interval": {
+            "default": [
+              0.0,
+              1.0
+            ],
+            "description": "Fractions along the start/end joint line; modest extrapolation allows\na hip or shoulder volume to extend beyond the joint centers.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "radius_m": {
+            "format": "double",
+            "type": "number"
+          },
+          "start": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "start",
+          "end",
+          "radius_m"
+        ],
+        "type": "object"
+      },
+      "CollisionConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "capsules": {
+            "items": {
+              "$ref": "#/$defs/CollisionCapsule"
+            },
+            "type": "array"
+          },
+          "margin_m": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "pairs": {
+            "items": {
+              "items": {
+                "format": "uint",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "tolerance_m": {
+            "default": 0.001,
+            "format": "double",
+            "type": "number"
+          },
+          "weight": {
+            "default": 100.0,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "capsules",
+          "pairs"
+        ],
+        "type": "object"
+      },
+      "HingeLimit": {
+        "additionalProperties": false,
+        "properties": {
+          "axis_parent": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "range_rad": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "axis_parent",
+          "range_rad"
+        ],
+        "type": "object"
+      },
+      "JointLimit": {
+        "additionalProperties": false,
+        "properties": {
+          "joint": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_angle_rad": {
+            "description": "A cone bound relative to the reference local rotation; not an anatomy prior.",
+            "format": "double",
+            "type": "number"
+          },
+          "reference_rotation": {
+            "default": null,
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "joint",
+          "max_angle_rad"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "articulations": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/ArticulationLimit"
+        },
+        "type": "array"
+      },
+      "collision": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/CollisionConfig"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "damping": {
+        "default": 0.03,
+        "format": "double",
+        "type": "number"
+      },
+      "iterations": {
+        "default": 80,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "limits": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/JointLimit"
+        },
+        "type": "array"
+      },
+      "max_step_rad": {
+        "default": 0.25,
+        "format": "double",
+        "type": "number"
+      },
+      "posture_weight": {
+        "default": 1e-05,
+        "format": "double",
+        "type": "number"
+      },
+      "root_translation": {
+        "default": false,
+        "type": "boolean"
+      },
+      "rotation_tolerance_rad": {
+        "default": 0.01,
+        "format": "double",
+        "type": "number"
+      },
+      "tolerance_m": {
+        "default": 0.001,
+        "format": "double",
+        "type": "number"
+      },
+      "warm_start_two_bone": {
+        "default": true,
+        "type": "boolean"
+      }
+    },
+    "title": "SolveConfig",
+    "type": "object"
+  },
+  "standardize_config": {
+    "$defs": {
+      "AnatomyClass": {
+        "enum": [
+          "human",
+          "stylized_humanoid",
+          "nonhuman",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "AnatomyKind": {
+        "enum": [
+          "head",
+          "body",
+          "hand",
+          "foot",
+          "chain",
+          "appendage"
+        ],
+        "type": "string"
+      },
+      "AnatomyPart": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "type": "boolean"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/AnatomyKind"
+          },
+          "preserved_part_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "prior_form": {
+            "type": "string"
+          },
+          "source_form": {
+            "description": "Reviewed structural identity, e.g. human, cloven_hoof, six_limb_chain.",
+            "type": "string"
+          },
+          "strategy": {
+            "$ref": "#/$defs/AnatomyStrategy"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "source_form",
+          "prior_form",
+          "strategy",
+          "evidence",
+          "confirmed"
+        ],
+        "type": "object"
+      },
+      "AnatomyStrategy": {
+        "enum": [
+          "fit_prior",
+          "preserve_source",
+          "unresolved"
+        ],
+        "type": "string"
+      },
+      "BindConfig": {
+        "additionalProperties": false,
+        "description": "The surface method requires an explicit fitted blueprint. It is useful for\nlayered garments/open meshes, but does not infer their anatomical attachment.",
+        "properties": {
+          "distance_power": {
+            "default": 4.0,
+            "format": "double",
+            "type": "number"
+          },
+          "envelope_radii_m": {
+            "additionalProperties": {
+              "format": "double",
+              "type": "number"
+            },
+            "default": {},
+            "description": "Optional capsule radii keyed by blueprint joint ID. A nearby hand should\nnot acquire a detached skirt simply because the garment is close to it.",
+            "type": "object"
+          },
+          "maximum_bind_distance_m": {
+            "default": 0.4,
+            "format": "double",
+            "type": "number"
+          },
+          "method": {
+            "$ref": "#/$defs/BindMethod",
+            "default": "volume_geodesic"
+          },
+          "minimum_falloff_m": {
+            "default": 0.004,
+            "format": "double",
+            "type": "number"
+          },
+          "smoothing_iterations": {
+            "default": 8,
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "surface_regions": {
+            "default": [],
+            "description": "Exact, geometry-checked regions from calibrated visual boxes or authoring.",
+            "items": {
+              "$ref": "#/$defs/WeightRegion"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "BindMethod": {
+        "enum": [
+          "volume_geodesic",
+          "surface_distance"
+        ],
+        "type": "string"
+      },
+      "CageSegment": {
+        "additionalProperties": false,
+        "properties": {
+          "influence_radius_m": {
+            "format": "double",
+            "type": "number"
+          },
+          "target_a": {
+            "type": "string"
+          },
+          "target_b": {
+            "type": "string"
+          },
+          "template_a": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "template_b": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "required": [
+          "template_a",
+          "template_b",
+          "target_a",
+          "target_b",
+          "influence_radius_m"
+        ],
+        "type": "object"
+      },
+      "ClothingHints": {
+        "additionalProperties": false,
+        "properties": {
+          "excluded_meshes": {
+            "default": [],
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "garment_vertices": {
+            "additionalProperties": false,
+            "default": {},
+            "description": "Explicitly painted garment observations override the color proposal.",
+            "patternProperties": {
+              "^\\d+$": {
+                "items": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
+          "landmarks": {
+            "additionalProperties": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "skin_vertices": {
+            "additionalProperties": false,
+            "default": {},
+            "description": "Explicit user/agent skin observations, in the exported primitive domain.",
+            "patternProperties": {
+              "^\\d+$": {
+                "items": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "landmarks"
+        ],
+        "type": "object"
+      },
+      "CompletionConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "anatomy": {
+            "additionalProperties": false,
+            "default": null,
+            "properties": {
+              "anatomy_class": {
+                "$ref": "#/$defs/AnatomyClass"
+              },
+              "author": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "string"
+              },
+              "parts": {
+                "items": {
+                  "$ref": "#/$defs/AnatomyPart"
+                },
+                "type": "array"
+              },
+              "prior_hash": {
+                "type": "string"
+              },
+              "source_hash": {
+                "type": "string"
+              },
+              "version": {
+                "format": "uint32",
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "version",
+              "anatomy_class",
+              "source_hash",
+              "prior_hash",
+              "author",
+              "evidence",
+              "parts"
+            ],
+            "type": "object"
+          },
+          "clearance_m": {
+            "default": 0.004,
+            "format": "double",
+            "type": "number"
+          },
+          "minimum_radial_fraction": {
+            "default": 0.35,
+            "description": "Reject a section rather than flattening it below this fraction.",
+            "format": "double",
+            "type": "number"
+          },
+          "radial_scale": {
+            "default": 1.0,
+            "format": "double",
+            "type": "number"
+          },
+          "segments": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/CageSegment"
+            },
+            "type": "array"
+          },
+          "template": {
+            "default": "",
+            "type": "string"
+          },
+          "template_max": {
+            "default": [
+              10.0,
+              10.0,
+              10.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "template_min": {
+            "default": [
+              -10.0,
+              -10.0,
+              -10.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "template_relax_iterations": {
+            "default": 0,
+            "description": "Optional relaxation of a synthetic voxel prior; zero for an authored body.",
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "template_source_hash": {
+            "default": "",
+            "type": "string"
+          },
+          "template_weight_segments": {
+            "additionalProperties": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "default": {},
+            "description": "Authored template bone -> cage segment. Bound vertices without a mapped\ninfluence stay unresolved instead of acquiring a spatially nearby bone.",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "GeometryConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "feature_angle_degrees": {
+            "default": 45.0,
+            "format": "double",
+            "type": "number"
+          },
+          "hair_strength": {
+            "default": 0.12,
+            "format": "double",
+            "type": "number"
+          },
+          "iterations": {
+            "default": 3,
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_displacement_m": {
+            "default": 0.001,
+            "description": "World-space budget, including all iterations; units must already be metres.",
+            "format": "double",
+            "type": "number"
+          },
+          "skin_strength": {
+            "default": 0.25,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "Issue": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "location": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/$defs/Severity"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message"
+        ],
+        "type": "object"
+      },
+      "Joint": {
+        "properties": {
+          "deform": {
+            "default": false,
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "matrix": {
+            "description": "Preserves a static affine node exactly, including shear. Animated nodes use TRS.",
+            "items": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "parent": {
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "rest": {
+            "$ref": "#/$defs/Transform"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "rest"
+        ],
+        "type": "object"
+      },
+      "JointSeed": {
+        "additionalProperties": false,
+        "properties": {
+          "joint": {
+            "description": "Exact node ID or an unambiguous node name in the working skeleton.",
+            "type": "string"
+          },
+          "vertices": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "joint",
+          "vertices"
+        ],
+        "type": "object"
+      },
+      "RegionAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_joints": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "region": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "region",
+          "allowed_joints"
+        ],
+        "type": "object"
+      },
+      "RegionConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "color_barrier": {
+            "default": 12.0,
+            "format": "double",
+            "type": "number"
+          },
+          "max_distance_m": {
+            "default": 1.0,
+            "format": "double",
+            "type": "number"
+          },
+          "minimum_confidence": {
+            "default": 0.08,
+            "format": "double",
+            "type": "number"
+          },
+          "normal_barrier": {
+            "default": 2.0,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "RegionKind": {
+        "enum": [
+          "skin",
+          "garment",
+          "hair",
+          "accessory",
+          "eyes",
+          "teeth"
+        ],
+        "type": "string"
+      },
+      "RegionSeed": {
+        "additionalProperties": false,
+        "description": "Exact source vertices, not positions on a different template or a previous output.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/RegionKind"
+          },
+          "mesh": {
+            "description": "Index in asset_inspect's flattened mesh primitive list.",
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rules": {
+            "default": [],
+            "description": "Optional explicit spatial/appearance rules generate sparse source seeds.",
+            "items": {
+              "$ref": "#/$defs/SeedRule"
+            },
+            "type": "array"
+          },
+          "vertices": {
+            "default": [],
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "mesh"
+        ],
+        "type": "object"
+      },
+      "RigBlueprint": {
+        "properties": {
+          "chains": {
+            "items": {
+              "$ref": "#/$defs/RigChain"
+            },
+            "type": "array"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/$defs/Issue"
+            },
+            "type": "array"
+          },
+          "method": {
+            "type": "string"
+          },
+          "schema_version": {
+            "type": "string"
+          },
+          "skeleton": {
+            "$ref": "#/$defs/Skeleton"
+          },
+          "source_hash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "source_hash",
+          "method",
+          "skeleton",
+          "chains",
+          "issues"
+        ],
+        "type": "object"
+      },
+      "RigChain": {
+        "properties": {
+          "flexion_axis_world": {
+            "description": "Authored world-space flexion axis for deformation probes. Geometry-only\ncandidates omit this rather than inventing an anatomical palm plane.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "joints": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "role": {
+            "type": "string"
+          },
+          "source_chain": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "joints",
+          "role",
+          "source_chain"
+        ],
+        "type": "object"
+      },
+      "SeedRule": {
+        "additionalProperties": false,
+        "properties": {
+          "green_blue_ratio_max": {
+            "default": 10.0,
+            "format": "double",
+            "type": "number"
+          },
+          "green_blue_ratio_min": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "red_green_ratio_max": {
+            "default": 10.0,
+            "format": "double",
+            "type": "number"
+          },
+          "red_green_ratio_min": {
+            "default": 0.0,
+            "format": "double",
+            "type": "number"
+          },
+          "spacing_m": {
+            "default": 0.01,
+            "format": "double",
+            "type": "number"
+          },
+          "srgb_max": {
+            "default": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "srgb_min": {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "world_max": {
+            "default": [
+              10.0,
+              10.0,
+              10.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "world_min": {
+            "default": [
+              -10.0,
+              -10.0,
+              -10.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "Severity": {
+        "enum": [
+          "info",
+          "warning",
+          "error"
+        ],
+        "type": "string"
+      },
+      "Skeleton": {
+        "properties": {
+          "joints": {
+            "items": {
+              "$ref": "#/$defs/Joint"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "joints"
+        ],
+        "type": "object"
+      },
+      "SkinConfig": {
+        "additionalProperties": false,
+        "properties": {
+          "attachments": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/RegionAttachment"
+            },
+            "type": "array"
+          },
+          "enabled": {
+            "default": true,
+            "type": "boolean"
+          },
+          "iterations": {
+            "default": 80,
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "patches": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/WeightPatch"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "SurfaceMask": {
+        "additionalProperties": false,
+        "properties": {
+          "geometry_hash": {
+            "description": "Hash of local position and triangle arrays, independent of skin weights.",
+            "type": "string"
+          },
+          "mesh": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "vertices": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "mesh",
+          "geometry_hash",
+          "vertices"
+        ],
+        "type": "object"
+      },
+      "Transform": {
+        "additionalProperties": false,
+        "properties": {
+          "rotation": {
+            "default": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          },
+          "scale": {
+            "default": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "translation": {
+            "default": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "WeightPatch": {
+        "additionalProperties": false,
+        "description": "A surface domain and Dirichlet anchors for constrained harmonic skin weights.\nOnly these bones may influence the domain. Disconnected unseeded islands fail.",
+        "properties": {
+          "mesh": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "seeds": {
+            "items": {
+              "$ref": "#/$defs/JointSeed"
+            },
+            "type": "array"
+          },
+          "vertices": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "mesh",
+          "vertices",
+          "seeds"
+        ],
+        "type": "object"
+      },
+      "WeightRegion": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_joints": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "excluded_joints": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mask": {
+            "$ref": "#/$defs/SurfaceMask"
+          }
+        },
+        "required": [
+          "id",
+          "mask",
+          "evidence"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "binding": {
+        "$ref": "#/$defs/BindConfig",
+        "default": {
+          "distance_power": 4.0,
+          "envelope_radii_m": {},
+          "maximum_bind_distance_m": 0.4,
+          "method": "volume_geodesic",
+          "minimum_falloff_m": 0.004,
+          "smoothing_iterations": 8,
+          "surface_regions": []
+        }
+      },
+      "blueprint": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/RigBlueprint"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional fitted source-specific rig. Existing animations then need retargeting."
+      },
+      "clothing_hints": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ClothingHints"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Source-space, confirmed humanoid landmarks for the interactive wardrobe.\nSource skin samples and coherent surface interiors seed the partition."
+      },
+      "completion": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/CompletionConfig"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "A standard body is a geometric prior, not a replacement for observed skin."
+      },
+      "geometry": {
+        "$ref": "#/$defs/GeometryConfig",
+        "default": {
+          "feature_angle_degrees": 45.0,
+          "hair_strength": 0.12,
+          "iterations": 3,
+          "max_displacement_m": 0.001,
+          "skin_strength": 0.25
+        }
+      },
+      "regions": {
+        "$ref": "#/$defs/RegionConfig",
+        "default": {
+          "color_barrier": 12.0,
+          "max_distance_m": 1.0,
+          "minimum_confidence": 0.08,
+          "normal_barrier": 2.0
+        }
+      },
+      "seeds": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/RegionSeed"
+        },
+        "type": "array"
+      },
+      "skin": {
+        "$ref": "#/$defs/SkinConfig",
+        "default": {
+          "attachments": [],
+          "enabled": true,
+          "iterations": 80,
+          "patches": []
+        }
+      },
+      "source_hash": {
+        "default": null,
+        "description": "Required whenever exact vertex hints are supplied. Prevents stale masks.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "split_clothing": {
+        "default": true,
+        "type": "boolean"
+      },
+      "uv_mask_size": {
+        "default": 1024,
+        "description": "Zero disables UV masks. Values up to 2048 are supported.",
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "title": "StandardizeConfig",
+    "type": "object"
+  },
+  "surface_contact_config": {
+    "$defs": {
+      "SurfaceMask": {
+        "additionalProperties": false,
+        "properties": {
+          "geometry_hash": {
+            "description": "Hash of local position and triangle arrays, independent of skin weights.",
+            "type": "string"
+          },
+          "mesh": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "vertices": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "mesh",
+          "geometry_hash",
+          "vertices"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "clip": {
+        "default": null,
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "epsilon_m": {
+        "default": 1e-06,
+        "format": "double",
+        "type": "number"
+      },
+      "maximum_reported_pairs": {
+        "default": 200,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "regions": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/SurfaceMask"
+        },
+        "type": "array"
+      },
+      "times": {
+        "default": [],
+        "items": {
+          "format": "double",
+          "type": "number"
+        },
+        "type": "array"
+      }
+    },
+    "title": "SurfaceContactConfig",
+    "type": "object"
+  },
+  "visual_boxes": {
+    "$defs": {
+      "BoxObservation": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "format": "double",
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "view": {
+            "type": "string"
+          },
+          "visibility": {
+            "$ref": "#/$defs/Visibility"
+          },
+          "xyxy": {
+            "description": "[xmin,ymin,xmax,ymax] normalized to [0,1]; origin at the image top-left.",
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          }
+        },
+        "required": [
+          "view",
+          "xyxy",
+          "confidence",
+          "visibility",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "BoxRegion": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_joints": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "excluded_joints": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/RegionKind"
+          },
+          "label": {
+            "type": "string"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/$defs/BoxObservation"
+            },
+            "type": "array"
+          },
+          "parent_region": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind",
+          "observations"
+        ],
+        "type": "object"
+      },
+      "RegionKind": {
+        "enum": [
+          "joint",
+          "limb",
+          "palm",
+          "digit",
+          "garment",
+          "rigid",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "Visibility": {
+        "enum": [
+          "visible",
+          "partial",
+          "occluded"
+        ],
+        "type": "string"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "provenance": {
+        "description": "Provider/model or inspecting agent identity, prompt version and evidence notes."
+      },
+      "regions": {
+        "items": {
+          "$ref": "#/$defs/BoxRegion"
+        },
+        "type": "array"
+      },
+      "source_file_sha256": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "source_file_sha256",
+      "provenance",
+      "regions"
+    ],
+    "title": "VisualBoxes",
+    "type": "object"
+  },
+  "visual_fit_config": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "digit_fractions": {
+        "default": [
+          0.04,
+          0.36,
+          0.68,
+          0.94
+        ],
+        "items": {
+          "format": "double",
+          "type": "number"
+        },
+        "type": "array"
+      },
+      "iterations": {
+        "default": 8,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "minimum_clearance_m": {
+        "default": 0.0004,
+        "format": "double",
+        "type": "number"
+      },
+      "radial_directions": {
+        "default": 8,
+        "format": "uint",
+        "minimum": 0,
+        "type": "integer"
+      }
+    },
+    "title": "VisualFitConfig",
+    "type": "object"
+  },
+  "visual_input": {
+    "$defs": {
+      "Bounds": {
+        "properties": {
+          "max": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "min": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "required": [
+          "min",
+          "max"
+        ],
+        "type": "object"
+      },
+      "CalibratedView": {
+        "additionalProperties": false,
+        "properties": {
+          "framing": {
+            "default": "",
+            "type": "string"
+          },
+          "height": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "image_sha256": {
+            "type": "string"
+          },
+          "projection": {
+            "type": "string"
+          },
+          "projection_matrix": {
+            "items": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          },
+          "width": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "world_to_camera": {
+            "items": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "image",
+          "image_sha256",
+          "width",
+          "height",
+          "projection",
+          "projection_matrix",
+          "world_to_camera"
+        ],
+        "type": "object"
+      }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "bounds": {
+        "$ref": "#/$defs/Bounds"
+      },
+      "coordinates": {
+        "type": "string"
+      },
+      "pose": {
+        "type": "string"
+      },
+      "schema_version": {
+        "type": "string"
+      },
+      "source_file": {
+        "type": "string"
+      },
+      "source_file_sha256": {
+        "type": "string"
+      },
+      "views": {
+        "items": {
+          "$ref": "#/$defs/CalibratedView"
+        },
+        "type": "array"
+      }
+    },
+    "required": [
+      "schema_version",
+      "source_file_sha256",
+      "source_file",
+      "pose",
+      "coordinates",
+      "bounds",
+      "views"
+    ],
+    "title": "VisualInput",
+    "type": "object"
+  }
+}

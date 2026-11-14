@@ -1,0 +1,20 @@
+[package]
+name = "charloom-face-fit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+charloom-core.workspace = true
+schemars.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+# Geometry fingerprints must survive JavaScript/JSON/native f64 roundtrips.
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+nalgebra.workspace = true
+rayon.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true
