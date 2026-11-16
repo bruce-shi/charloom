@@ -102,7 +102,7 @@ function ResultCard({ run }: { run: CharacterCase }) {
   return (
     <Link
       className="asset-card result-card"
-      to={`/characters/${encodeURIComponent(run.id)}/editor`}
+      to={`/characters/${encodeURIComponent(run.id)}`}
       title={run.appearanceNote}
     >
       <div className="asset-card-art">

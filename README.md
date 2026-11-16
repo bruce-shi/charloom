@@ -1,32 +1,22 @@
 # Charloom
 
-Charloom fits humanoid scans to a rigged MakeHuman prior, separates and skins garments, and retargets animation. The workspace includes a Rust CLI, a local service, an MCP server and a React character viewer.
-
-## Build
+The public tools fit a rigged MakeHuman scaffold to an annotated humanoid scan, extract its wardrobe and transfer animation. The local Gallery browses registered character exports.
 
 ```sh
-cargo build --locked --workspace --profile iterate
-cd viewer
-bun install --frozen-lockfile
-bun run build
-cd ..
-target/iterate/charloom --help
+uv venv --python 3.12 out/tools/cv/.venv
+uv pip install --python out/tools/cv/.venv/bin/python -r scripts/requirements-blender.txt
+(cd viewer && bun install --frozen-lockfile)
 ```
 
-## Fit a scan
-
-Supply a scan and a rigged MakeHuman GLB. To prepare annotated views, run `charloom mh-guide --help`. To fit the body, skin the garments and retarget a motion, run the following command from the repository root.
+Use a locally installed Blender for FBX motion input. Supply your own rigged body, scan and guidance. See the [annotation guide](docs/scan-annotation.md) for camera coordinates.
 
 ```sh
-target/iterate/charloom mh-transfer scan.glb --prior prior.glb --motion walk.fbx --out out/my-character
-python3 scripts/mh-ide-sync.py out/my-character
-target/iterate/charloom ide
+PY=out/tools/cv/.venv/bin/python
+"$PY" scripts/scan-guide.py scan.glb --out out/guide
+"$PY" scripts/scan-transfer.py scan.glb --prior body.glb --guidance out/guide/guidance.json --motion walk.fbx --out out/character
+"$PY" scripts/animate.py validate out/character/4-garments/character.glb
+python3 scripts/mh-ide-sync.py out/character
+(cd viewer && bun run dev)
 ```
 
-## Verify
-
-```sh
-cargo test --locked --workspace
-cd viewer
-bun run test:local
-```
+Use `scripts/animate.py` for joint mapping, pose sampling, IK and recipe baking. Use `scripts/skin.py` for surface diagnostics and versioned weight repair.

@@ -5,80 +5,24 @@ import {
   useParams,
   useSearchParams,
 } from "react-router";
-import { ArrowLeft, Focus, Pause, Play, RotateCcw, Square } from "lucide-react";
+import { ArrowLeft, Focus, Pause, Play, Square } from "lucide-react";
 import { useStudio, type Point3 } from "./data";
 import {
   AnimationClock,
   ModelViewport,
   invalidateCamera,
-  type Bars,
   type CameraPose,
   type ClipKind,
   type ViewSettings,
 } from "./Viewport";
 import { characterOf, resultRuns, runLabel, shortTime } from "./results";
 import { CharacterSidebar } from "./CharacterSidebar";
-import { EXPRESSIONS, moodAt } from "./faceClips";
+import { EXPRESSIONS, phraseAt } from "./faceClips";
 
 const VIEWS = ["正面", "侧面", "背面", "透视"];
 /** Left viewport: the source scan, or another run of the same character. */
 const SCAN = "scan";
 
-/** MakeHuman's names for the body-shape targets the pipeline exports
- * (sizing.rs, the prior's `body-shape.glb`), grouped as MakeHuman's
- * modelling tabs; a target missing here is listed under 其他. */
-const GROUPS: [string, [string, string][]][] = [
-  ["整体", [["build-weight", "体重"], ["build-muscle", "肌肉"]]],
-  [
-    "躯干",
-    [
-      ["stomach-pregnant", "腹部"],
-      ["waist-circ", "腰围"],
-      ["hips-circ", "臀围"],
-      ["bust-circ", "胸围"],
-      ["breast-size", "胸部大小"],
-      ["breast-firmness", "胸部挺度"],
-      ["pectoral", "胸肌"],
-      ["dorsi", "背阔肌"],
-      ["buttocks-volume", "臀部"],
-      ["torso-scale-depth", "躯干厚度"],
-      ["torso-scale-horiz", "躯干宽度"],
-    ],
-  ],
-  [
-    "四肢",
-    [
-      ["upperarm-circ", "上臂围"],
-      ["thigh-circ", "大腿围"],
-      ["calf-circ", "小腿围"],
-      ["hand-scale", "手大小"],
-      ["foot-scale", "脚大小"],
-    ],
-  ],
-  [
-    "头颈",
-    [
-      ["neck-circ", "颈围"],
-      ["head-scale-horiz", "头宽"],
-      ["head-scale-vert", "头高"],
-      ["head-scale-depth", "头深"],
-    ],
-  ],
-  [
-    "面部",
-    [
-      ["nose-volume", "鼻子"],
-      ["mouth-scale-horiz", "嘴宽"],
-      ["mouth-scale-vert", "嘴高"],
-      ["eye-scale", "眼睛"],
-      ["cheek-volume", "脸颊"],
-    ],
-  ],
-];
-
-/** One mh-transfer result: the character in one viewport, its model
- * versions (dressed with the walk, clothes only, ...) and MakeHuman's
- * body-shape bars, which move the body and the clothes together. */
 export default function CharacterPage() {
   const { cases, error } = useStudio(),
     { characterId } = useParams(),
@@ -98,8 +42,6 @@ export default function CharacterPage() {
       grid: true,
     }),
     [viewName, setViewName] = useState("正面"),
-    [available, setAvailable] = useState<string[] | null>(null),
-    [bars, setBars] = useState<Bars>({}),
     [face, setFace] = useState<Point3 | null>(null);
   // Walk or face test; kept when the run or model changes.
   const clip = useRef<ClipKind>("walk");
@@ -122,7 +64,6 @@ export default function CharacterPage() {
     return c;
   }, [characterId, stage?.file, leftStage?.file]);
   useEffect(() => {
-    setAvailable(null);
     setFace(null);
   }, [stage?.file]);
   const center = selected?.bodyCenter ?? ([0, 0.875, 0] as Point3);
@@ -176,7 +117,6 @@ export default function CharacterPage() {
   );
   useEffect(() => {
     camera("正面");
-    setBars({});
   }, [characterId, camera]);
   // A new run or model opened during the face test: back on its face.
   useEffect(() => {
@@ -211,7 +151,7 @@ export default function CharacterPage() {
     );
   const index = siblings.findIndex((c) => c.id === selected.id);
   const goRun = (id: string) =>
-    navigate(`/characters/${encodeURIComponent(id)}/editor?${params.toString()}`);
+    navigate(`/characters/${encodeURIComponent(id)}?${params.toString()}`);
   return (
     <div className="character-editor inspector-hidden result-preview">
       <div className="character-workspace-header">
@@ -382,95 +322,14 @@ export default function CharacterPage() {
                 settings={settings}
                 clock={clock}
                 parts={stage?.parts}
-                bars={bars}
-                onBars={setAvailable}
                 onFace={setFace}
               />
             </div>
             <WalkBar clock={clock} setClip={setClip} />
           </div>
-          <CharacterSidebar key={selected.id} renders={selected.renders}>
-            <ShapePanel available={available} bars={bars} setBars={setBars} />
-          </CharacterSidebar>
+          <CharacterSidebar key={selected.id} renders={selected.renders} />
         </div>
       </div>
-    </div>
-  );
-}
-
-function ShapePanel({
-  available,
-  bars,
-  setBars,
-}: {
-  available: string[] | null;
-  bars: Bars;
-  setBars: (f: (b: Bars) => Bars) => void;
-}) {
-  const names = available ?? [];
-  const known = new Set(GROUPS.flatMap(([, items]) => items.map(([n]) => n)));
-  const groups: [string, [string, string][]][] = [
-    ...GROUPS.map(
-      ([g, items]) =>
-        [g, items.filter(([n]) => names.includes(n))] as [string, [string, string][]],
-    ),
-    ["其他", names.filter((n) => !known.has(n)).map((n) => [n, n] as [string, string])],
-  ];
-  const changed = Object.values(bars).some((v) => v !== 0);
-  return (
-    <div className="shape-panel">
-      <div className="shape-panel-title">
-        <strong>MakeHuman 体型</strong>
-        <button
-          className="tool-button"
-          disabled={!changed}
-          title="所有滑杆回到 0（拟合结果）"
-          onClick={() => setBars(() => ({}))}
-        >
-          <RotateCcw size={13} />
-          <span>复位</span>
-        </button>
-      </div>
-      {available === null ? (
-        <p className="shape-panel-empty">正在读取模型的体型目标…</p>
-      ) : !available.length ? (
-        <p className="shape-panel-empty">
-          这个结果没有体型滑杆。用 size_morphs 打开的运行（x29 起）才带 MakeHuman
-          体型目标。
-        </p>
-      ) : (
-        groups
-          .filter(([, items]) => items.length)
-          .map(([group, items]) => (
-            <section key={group} className="shape-group">
-              <h3>{group}</h3>
-              {items.map(([name, label]) => {
-                const value = bars[name] ?? 0;
-                return (
-                  <label key={name} className="shape-bar" title={name}>
-                    <span>{label}</span>
-                    <input
-                      type="range"
-                      min={-1}
-                      max={1}
-                      step={0.01}
-                      value={value}
-                      aria-label={label}
-                      onChange={(e) => {
-                        const v = Number(e.target.value);
-                        setBars((b) => ({ ...b, [name]: Math.abs(v) < 0.015 ? 0 : v }));
-                      }}
-                      onDoubleClick={() => setBars((b) => ({ ...b, [name]: 0 }))}
-                    />
-                    <output className={value ? "" : "muted"}>
-                      {(value * 100).toFixed(0)}
-                    </output>
-                  </label>
-                );
-              })}
-            </section>
-          ))
-      )}
     </div>
   );
 }
@@ -491,7 +350,7 @@ function WalkBar({
   // One expression per second: held for the first half, then blended into
   // the next (faceClips.ts).
   const count = face ? EXPRESSIONS.length : 0;
-  const mood = useRef<HTMLSpanElement>(null);
+  const phrase = useRef<HTMLSpanElement>(null);
   useEffect(() => clock.subscribe(() => redraw((n) => n + 1)), [clock]);
   useEffect(() => {
     let frame = 0;
@@ -504,7 +363,7 @@ function WalkBar({
       steps.current?.querySelectorAll("button").forEach((b, k) => {
         b.setAttribute("aria-pressed", String(k === current));
       });
-      if (mood.current) mood.current.textContent = clock.enabled ? moodAt(t) : "";
+      if (phrase.current) phrase.current.textContent = clock.enabled ? phraseAt(t) : "";
       if (clock.playing) frame = requestAnimationFrame(tick);
     };
     tick();
@@ -529,7 +388,7 @@ function WalkBar({
                 ? kind === "face"
                   ? "表情测试：逐个检查面部是否贴合 MakeHuman 面部骨骼"
                   : kind === "talk"
-                    ? "说话：边说话边变换表情，带眨眼、视线和头部动作"
+                    ? "播放说话、口型和面部动作"
                     : "走路动画"
                 : "这个模型没有这段动画"
             }
@@ -578,7 +437,7 @@ function WalkBar({
           ))}
         </div>
       )}
-      {talk && <span ref={mood} className="talk-mood" title="当前情绪" />}
+      {talk && <span ref={phrase} className="talk-mood" title="当前短句" />}
       <button title="回到静止姿势" onClick={() => clock.rest()} disabled={!clock.enabled}>
         <Square size={11} />
         静止姿势

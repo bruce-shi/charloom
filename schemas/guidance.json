@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Guidance",
+  "type": "object",
+  "properties": {
+    "front_view": {
+      "description": "Id of the body view in which the character faces the viewer.",
+      "type": "string"
+    },
+    "garments": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/GarmentGuide"
+      }
+    },
+    "landmarks": {
+      "description": "Landmark name → observations (see INSTRUCTIONS.md for names).",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/Point"
+        }
+      },
+      "default": {}
+    },
+    "schema": {
+      "type": "string"
+    },
+    "skin": {
+      "description": "Bare skin regions (face, arms, legs …) — seeds and skin-colour samples.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Polygon"
+      }
+    },
+    "skin_cleanup": {
+      "description": "Skin areas whose painted texture must not be baked: hair strands or\ngarment shadows painted onto skin, stray straps.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Polygon"
+      }
+    },
+    "skin_cleanup_strokes": {
+      "description": "Thin painted marks on skin (a painted strand or strap) not to bake.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Stroke"
+      }
+    },
+    "skin_strokes": {
+      "description": "Bands of bare skin too thin for a polygon (a strip between two items).",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Stroke"
+      }
+    },
+    "source_hash": {
+      "description": "`source_hash` from views.json; guidance for another file is refused.",
+      "type": "string"
+    },
+    "subject": {
+      "$ref": "#/$defs/Subject",
+      "default": {
+        "kind": "",
+        "notes": "",
+        "sex": ""
+      }
+    },
+    "view_sha256": {
+      "description": "View id → sha256 of the view's PNG when this guidance was started\n(copied from the template; leave it unchanged).",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "source_hash",
+    "front_view"
+  ],
+  "$defs": {
+    "GarmentGuide": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "description": "`garment` or `hair` (hair accessories count as hair).",
+          "$ref": "#/$defs/Label"
+        },
+        "layer": {
+          "description": "0 = worn directly on the skin; outer layers have larger numbers.",
+          "type": "integer",
+          "format": "uint32",
+          "default": 0,
+          "minimum": 0
+        },
+        "name": {
+          "description": "Output mesh name, e.g. \"robe\", \"trousers\", \"boots\", \"hair\", \"hairpin\".",
+          "type": "string"
+        },
+        "regions": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Polygon"
+          }
+        },
+        "strokes": {
+          "description": "Bands along thin parts of the item that a polygon cannot cover.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Stroke"
+          }
+        },
+        "tight": {
+          "description": "Fits closely (shirt, leggings): the body is allowed to hug it.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "label"
+      ]
+    },
+    "HeadRoute": {
+      "oneOf": [
+        {
+          "description": "MakeHuman's head and face rig fitted to the scan; the scan's colour is\nbaked into MakeHuman's UVs and the eyes are MakeHuman's eyeballs.",
+          "type": "string",
+          "const": "fit"
+        },
+        {
+          "description": "Keep the scan's own head (mesh, UVs, texture, painted eyes), rigid to\nMakeHuman's `head` bone and lofted onto the MakeHuman neck. Exact face,\nno facial rig.",
+          "type": "string",
+          "const": "keep_scan"
+        }
+      ]
+    },
+    "Label": {
+      "type": "string",
+      "enum": [
+        "skin",
+        "hair",
+        "garment"
+      ]
+    },
+    "Point": {
+      "description": "One pixel observation of a landmark in a named view.",
+      "type": "object",
+      "properties": {
+        "confidence": {
+          "description": "1 = clearly visible; lower for joints estimated under clothing.",
+          "type": "number",
+          "format": "double",
+          "default": 1.0
+        },
+        "px": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxItems": 2,
+          "minItems": 2
+        },
+        "reason": {
+          "description": "Optional: why the point is here or what hides it.",
+          "type": "string"
+        },
+        "view": {
+          "type": "string"
+        },
+        "visibility": {
+          "description": "Optional. `occluded` halves the confidence, `partial` keeps 80 %.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Visibility"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "view",
+        "px"
+      ]
+    },
+    "Polygon": {
+      "type": "object",
+      "properties": {
+        "polygon": {
+          "description": "Pixel vertices, at least three, in order around the region.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 2,
+            "minItems": 2
+          }
+        },
+        "view": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "view",
+        "polygon"
+      ]
+    },
+    "Stroke": {
+      "description": "A band along a thin item (strap, moustache, single strand, cord).",
+      "type": "object",
+      "properties": {
+        "points": {
+          "description": "Centre line in pixels, in order along the item (one point = a dot).",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 2,
+            "minItems": 2
+          }
+        },
+        "view": {
+          "type": "string"
+        },
+        "width_px": {
+          "description": "Full width of the band in pixels: the item's visible width.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "view",
+        "points",
+        "width_px"
+      ]
+    },
+    "Subject": {
+      "type": "object",
+      "properties": {
+        "head": {
+          "description": "Head route for this character: `fit` (MakeHuman head fitted, colour\nbaked) or `keep_scan` (the scan's own head on the MakeHuman body).\n`Config::head`, when set, wins.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HeadRoute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "description": "human, stylized_humanoid, nonhuman (only humanoids are supported).",
+          "type": "string"
+        },
+        "notes": {
+          "type": "string",
+          "default": ""
+        },
+        "sex": {
+          "description": "female / male / unknown — which MakeHuman prior fits best.",
+          "type": "string",
+          "default": ""
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ]
+    },
+    "Visibility": {
+      "description": "How much of a landmark is in view in one observation.",
+      "oneOf": [
+        {
+          "description": "The spot itself is in view.",
+          "type": "string",
+          "const": "visible"
+        },
+        {
+          "description": "Partly hidden (a strand, cuff or strap over part of it).",
+          "type": "string",
+          "const": "partial"
+        },
+        {
+          "description": "Hidden (under clothing or hair): placed from proportions.",
+          "type": "string",
+          "const": "occluded"
+        }
+      ]
+    }
+  }
+}

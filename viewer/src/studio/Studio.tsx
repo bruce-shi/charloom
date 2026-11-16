@@ -8,7 +8,6 @@ import {
   Routes,
   useLocation,
 } from "react-router";
-import { SlidersHorizontal } from "lucide-react";
 import { ResultsLibrary } from "./ResultsLibrary";
 import { StudioContext, type CharacterCase } from "./data";
 import "./studio.css";
@@ -17,8 +16,7 @@ const CharacterPage = lazy(() => import("./CharacterPage"));
 /** Every mh-transfer result, as registered by scripts/mh-ide-sync.py. */
 const RESULTS = "/files/out/review/ide/results.json";
 
-/** The studio: the results library and one character page, where the
- * character is shaped with MakeHuman's body-shape bars. */
+/** Browse the results library and compare character exports. */
 function StudioShell() {
   const [cases, setCases] = useState<CharacterCase[]>([]),
     [error, setError] = useState("");
@@ -30,7 +28,7 @@ function StudioShell() {
     fetch(RESULTS, { signal: c.signal, cache: "no-store" })
       .then(async (r) => {
         if (r.status === 401) {
-          throw new Error("此浏览器的本地会话尚未建立或已失效。请运行 charloom ide，并在它打开的页面继续。");
+          throw new Error("此浏览器的本地会话尚未建立或已失效。请打开本地 Gallery 启动时输出的完整链接。");
         }
         if (!r.ok) {
           const detail = await r.json().catch(() => undefined);
@@ -57,8 +55,7 @@ function StudioShell() {
           </Link>
           <div className="header-divider" />
           <span className="workspace-name">
-            <SlidersHorizontal size={14} />
-            MakeHuman 体型调整
+            角色浏览
           </span>
           <div className="toolbar-spacer" />
           <span className="local-engine">

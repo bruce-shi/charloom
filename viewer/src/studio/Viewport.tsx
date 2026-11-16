@@ -39,30 +39,9 @@ export type ViewSettings = {
   wireframe: boolean;
   grid: boolean;
 };
-/** MakeHuman body-shape bars, -1..1 per target name (`build-weight`):
- * positive drives the morph `NAME+`, negative `NAME-` (sizing.rs). */
-export type Bars = Record<string, number>;
 /** What a mesh is (`charloom_part` extras: "garment", "hair"); the body,
  * eyes and other MakeHuman parts have none. */
 const partOf = (n: Mesh) => (n.userData.charloom_part as string | undefined) ?? "body";
-/** Bar names (without the sign) of a loaded model, the body's order first. */
-function barNames(scene: Group | Mesh | any): string[] {
-  const names: string[] = [];
-  const add = (dict?: Record<string, number>) => {
-    if (!dict) return;
-    for (const key of Object.keys(dict).sort((a, b) => dict[a] - dict[b])) {
-      const m = /^(.*)[+-]$/.exec(key);
-      if (m && !names.includes(m[1])) names.push(m[1]);
-    }
-  };
-  const meshes: Mesh[] = [];
-  scene.traverse((n: any) => {
-    if (n instanceof Mesh) meshes.push(n);
-  });
-  meshes.sort((a, b) => Number(partOf(b) === "body") - Number(partOf(a) === "body"));
-  meshes.forEach((m) => add(m.morphTargetDictionary));
-  return names;
-}
  
 export type ClipKind = "walk" | "face" | "talk";
 const KINDS: ClipKind[] = ["walk", "face", "talk"];
@@ -166,8 +145,6 @@ const AssetObject = memo(function AssetObject({
   matrix,
   clock,
   parts,
-  bars,
-  onBars,
   onFace,
 }: {
   file: string;
@@ -177,8 +154,6 @@ const AssetObject = memo(function AssetObject({
   matrix?: number[];
   clock?: AnimationClock;
   parts?: string[];
-  bars?: Bars;
-  onBars?: (names: string[]) => void;
   onFace?: (point: Point3) => void;
 }) {
   const gltf = useGLTF(file);
@@ -298,23 +273,6 @@ const AssetObject = memo(function AssetObject({
     invalidate();
   }, [scene, settings.clay, settings.wireframe, parts, invalidate]);
   useEffect(() => {
-    onBars?.(barNames(scene));
-  }, [scene, onBars]);
-  // Body and clothes carry the same named targets, so one value moves both.
-  useEffect(() => {
-    scene.traverse((n) => {
-      if (!(n instanceof Mesh) || !n.morphTargetDictionary || !n.morphTargetInfluences)
-        return;
-      const influences = n.morphTargetInfluences;
-      influences.fill(0);
-      for (const [name, value] of Object.entries(bars ?? {})) {
-        const i = n.morphTargetDictionary[`${name}${value >= 0 ? "+" : "-"}`];
-        if (i !== undefined) influences[i] = Math.abs(value);
-      }
-    });
-    invalidate();
-  }, [scene, bars, invalidate]);
-  useEffect(() => {
     ready();
     return () => {
       scene.traverse((n) => {
@@ -400,8 +358,6 @@ export function ModelViewport({
   matrix,
   clock,
   parts,
-  bars,
-  onBars,
   onFace,
 }: {
   id: string;
@@ -414,8 +370,6 @@ export function ModelViewport({
   matrix?: number[];
   clock?: AnimationClock;
   parts?: string[];
-  bars?: Bars;
-  onBars?: (names: string[]) => void;
   onFace?: (point: Point3) => void;
 }) {
   const [loaded, setLoaded] = useState("");
@@ -459,8 +413,6 @@ export function ModelViewport({
                 matrix={matrix}
                 clock={clock}
                 parts={parts}
-                bars={bars}
-                onBars={onBars}
                 onFace={onFace}
               />
             </Suspense>

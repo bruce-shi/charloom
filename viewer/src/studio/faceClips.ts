@@ -1,8 +1,7 @@
 // Face review clips, built in the viewer on MakeHuman's face rig so every
 // result can play them, whatever clips its file carries:
-//   face: the test expressions of crates/charloom-mh/src/face_test.rs, one
-//         per second (keep the two tables the same);
-//   talk: a 12 s loop of someone talking while their mood changes, the
+//   face: one expression per second;
+//   talk: a 12 s loop with phrase stress, the
 //         mouth shaped by each sound (lip sync), with blinks, glances and
 //         a little head movement.
 import {
@@ -23,6 +22,7 @@ type Face = {
   jaw: number;
   smile: number;
   browUp: number;
+  browBias: number;
   frown: number;
   blink: number;
   /** Mouth shape, -1..1: corners apart (+) or drawn together (-), upper
@@ -31,6 +31,7 @@ type Face = {
   lipUpper: number;
   lipLower: number;
   lipForward: number;
+  labiodental: number;
   /** Glance to the character's left, and up. */
   eyeLeft: number;
   eyeUp: number;
@@ -42,12 +43,14 @@ const REST: Face = {
   jaw: 0,
   smile: 0,
   browUp: 0,
+  browBias: 0,
   frown: 0,
   blink: 0,
   lipWide: 0,
   lipUpper: 0,
   lipLower: 0,
   lipForward: 0,
+  labiodental: 0,
   eyeLeft: 0,
   eyeUp: 0,
   headLeft: 0,
@@ -91,15 +94,24 @@ const RIG: [string, Turn[]][] = [
     [Y, true, (f) => f.eyeLeft],
     [X, true, (f) => -f.eyeUp],
   ]),
-  [
-    "head",
-    [
-      [Y, true, (f) => f.headLeft],
-      [X, true, (f) => -f.headUp],
-      [Z, true, (f) => f.headRoll],
-    ],
-  ],
 ];
+
+/** Distribute the spoken gesture through the head's actual neck ancestors.
+ * A head-only rig receives the whole turn. Model axes keep rolled bones aligned. */
+function speakingTurns(head: Object3D): [string, Turn[]][] {
+  const shares = new Map([["neck03", .22], ["neck02", .15], ["neck01", .08]]);
+  const chain: [string, number][] = [["head", .55]];
+  for (let parent = head.parent; parent; parent = parent.parent) {
+    const share = shares.get(parent.name);
+    if (share !== undefined) chain.push([parent.name, share]);
+  }
+  const total = chain.reduce((sum, [, weight]) => sum + weight, 0);
+  return chain.map(([name, weight]) => [name, [
+    [Y, true, (f) => f.headLeft * weight / total],
+    [X, true, (f) => -f.headUp * weight / total],
+    [Z, true, (f) => f.headRoll * weight / total],
+  ]]);
+}
 
  
 type Slide = (f: Face) => [number, number, number];
@@ -140,17 +152,6 @@ function testFace(t: number): Face {
 }
 
 export const TALK_SECONDS = 12;
-/** The mood through the talk: [from second, name, smile, brows up, frown]. */
-const MOODS: [number, string, number, number, number][] = [
-  [0, "平静", 0.15, 0, 0],
-  [2.7, "微笑", 0.8, 0.15, 0],
-  [5.5, "惊讶", 0.1, 0.9, 0],
-  [7.7, "皱眉", 0, 0, 0.8],
-  [10.1, "微笑", 0.6, 0.2, 0],
-  [11.4, "平静", 0.15, 0, 0],
-];
-export const moodAt = (t: number) =>
-  MOODS.reduce((name, m) => (t >= m[0] ? m[1] : name), MOODS[0][1]);
 /** Mouth shapes by sound: [jaw, wide, upper lip, lower lip, forward]. */
 const SOUNDS: Record<string, [number, number, number, number, number]> = {
   A: [0.19, 0.1, 0, 0, 0], // father
@@ -163,88 +164,127 @@ const SOUNDS: Record<string, [number, number, number, number, number]> = {
   S: [0.04, 0.5, 0.3, -0.2, 0], // s z t d
   L: [0.09, 0.2, 0, 0, 0], // l n
 };
-/** Spoken phrases, with a breath between them: [from, to, sounds]. */
+/** The demo's phoneme score. Capital vowels carry phrase stress; both the
+ * mouth and the surrounding tissue read the same events. Times are seconds. */
 const PHRASES: [number, number, string][] = [
-  [0.3, 2.2, "SIAOMEIUAFA"],
-  [2.9, 5.0, "UOMELIASOUEMA"],
-  [5.7, 7.2, "AOUASEMA"],
-  [8.0, 9.7, "MUSIFALEOMA"],
-  [10.3, 11.5, "EIAMOLU"],
+  [0.3, 2.2, "siAomeiUafa"],
+  [2.9, 5.0, "uomEliasOuema"],
+  [5.7, 7.2, "aOuasEma"],
+  [8.0, 9.7, "musIfalEoma"],
+  [10.3, 11.5, "eiAmolu"],
 ];
-/** The mouth through the loop: [second, jaw, wide, upper, lower, forward],
- * one key at the middle of each sound (vowels take twice a consonant's
- * time) and a closed mouth around each phrase. */
+
+export function phraseAt(t: number) {
+  const i = PHRASES.findIndex(([from, to]) => from <= t && t <= to);
+  return i < 0 ? "停顿" : `第 ${i + 1} 句`;
+}
+
+const SPEECH = PHRASES.flatMap(([from, to, score], phrase) => {
+  const lengths = [...score].map(c => /[aeiou]/i.test(c) ? 2 : 1);
+  const unit = (to - from - .2) / lengths.reduce<number>((sum, n) => sum + n, 0);
+  let start = from + .1;
+  return [...score].map((c, i) => {
+    const duration = lengths[i] * unit;
+    const cue = { sound: c.toUpperCase(), time: start + duration / 2, duration,
+      stressed: /[AEIOU]/.test(c), vowel: lengths[i] === 2, phrase };
+    start += duration;
+    return cue;
+  });
+});
+export const speechContacts = SPEECH.filter(c => c.sound === "M" || c.sound === "F");
+export const speechAccents = SPEECH.filter(c => c.stressed);
+
 const MOUTH = (() => {
-  const vowel = (c: string) => "AEIOU".includes(c),
-    stress = [0.8, 1.1, 0.7, 1, 0.9];
-  const keys: number[][] = [[0, 0, 0, 0, 0, 0]];
-  let n = 0;
-  for (const [from, to, sounds] of PHRASES) {
-    const unit =
-      (to - from - 0.2) / [...sounds].reduce((sum, c) => sum + (vowel(c) ? 2 : 1), 0);
-    let t = from + 0.1;
-    keys.push([from, 0, 0, 0, 0, 0]);
-    for (const c of sounds) {
-      const length = unit * (vowel(c) ? 2 : 1),
-        [jaw, ...lips] = SOUNDS[c];
-      keys.push([t + length / 2, jaw * (vowel(c) ? stress[n++ % stress.length] : 1), ...lips]);
-      t += length;
+  const rest = [0, 0, 0, 0, 0, 0];
+  const keys = [0, ...PHRASES.flatMap(([from, to]) => [from, to]), TALK_SECONDS]
+    .map(t => [t, ...rest]);
+  for (const cue of SPEECH) {
+    const [jaw, ...lips] = SOUNDS[cue.sound];
+    const gain = cue.vowel ? (cue.stressed ? .92 : .66) : 1;
+    const pose = [jaw * gain, ...lips, cue.sound === "F" ? 1 : 0];
+    if (cue.sound === "M" || cue.sound === "F") {
+      keys.push([cue.time - cue.duration * .22, ...pose], [cue.time + cue.duration * .22, ...pose]);
+    } else {
+      keys.push([cue.time, ...pose]);
     }
-    keys.push([to, 0, 0, 0, 0, 0]);
   }
-  keys.push([TALK_SECONDS, 0, 0, 0, 0, 0]);
-  return keys;
+  return keys.sort((a, b) => a[0] - b[0]);
 })();
-const BLINKS = [1.1, 3.3, 5.75, 6.9, 8.6, 10.2, 11.3];
-/** Glances: [second, left, up], each reached in a quick jump. */
+
+// Two short glances during phrase breaks, returning to the listener.
 const GLANCES: [number, number, number][] = [
-  [0, 0, 0],
-  [1.1, 0.1, 0.03],
-  [2.6, 0, 0],
-  [4.2, -0.12, -0.04],
-  [5.75, 0, 0.08],
-  [7.6, 0.06, -0.1],
-  [9.0, -0.05, -0.08],
-  [10.2, 0, 0],
+  [PHRASES[0][1], .075, -.025], [PHRASES[1][0], 0, 0],
+  [PHRASES[2][1], -.085, .035], [PHRASES[3][0], 0, 0],
 ];
+// One principal accent per phrase carries the head beat. Some phrases
+// settle into a nod, others open with a lift. The face keeps the finer accents.
+const HEAD_BEATS = PHRASES.flatMap((_, phrase) => {
+  const accents = speechAccents.filter(cue => cue.phrase === phrase);
+  return phrase % 2 ? accents.slice(-1) : accents.slice(0, 1);
+});
+
+const BLINKS = [PHRASES[0][1], PHRASES[2][0] - .27, PHRASES[3][1], PHRASES[4][1]];
+
+function pulse(time: number, peak: number, attack: number, release: number) {
+  return smooth(1 + (time - peak) / attack) * smooth(1 - (time - peak) / release);
+}
 
 function talkFace(t: number): Face {
   const f = { ...REST };
-  // Mood: each one eases in over 0.6 s.
-  let mood = MOODS[0].slice(2) as number[];
-  for (const m of MOODS.slice(1)) {
-    const u = smooth((t - m[0]) / 0.6);
-    mood = mood.map((v, i) => v + ((m[i + 2] as number) - v) * u);
+  const next = MOUTH.findIndex(k => k[0] > t);
+  const a = MOUTH[next - 1], b = MOUTH[next];
+  const u = smooth((t - a[0]) / (b[0] - a[0]));
+  [f.jaw, f.lipWide, f.lipUpper, f.lipLower, f.lipForward, f.labiodental] =
+    a.slice(1).map((v, i) => v + (b[i + 1] - v) * u);
+  // The brow leads a stressed vowel. The cheek peaks just after it and
+  // releases more slowly. Neither expression layer drives the jaw.
+  for (const cue of speechAccents) {
+    const brow = pulse(t, cue.time - .065, .17, .30);
+    const cheek = pulse(t, cue.time + .045, .15, .32);
+    const spread = Math.max(0, SOUNDS[cue.sound][1]);
+    f.browUp += .30 * brow;
+    f.browBias += (cue.phrase % 2 ? -.055 : .055) * brow;
+    f.smile += (.12 + .11 * spread) * cheek;
   }
-  [f.smile, f.browUp, f.frown] = mood;
-  // Speech: the mouth eases from each sound's shape to the next; a
-  // surprised face keeps the mouth a little open.
-  const next = Math.max(1, MOUTH.findIndex((k) => k[0] > t)),
-    a = MOUTH[next - 1],
-    b = MOUTH[next],
-    u = smooth((t - a[0]) / (b[0] - a[0]));
-  [f.jaw, f.lipWide, f.lipUpper, f.lipLower, f.lipForward] = a
-    .slice(1)
-    .map((v, i) => v + (b[i + 1] - v) * u);
-  // Wide-open sounds lift the brows a little.
-  f.browUp += Math.max(0, f.jaw - 0.12);
-  f.jaw += 0.05 * mood[1];
-  for (const b of BLINKS)
-    f.blink = Math.max(f.blink, smooth((t - b) / 0.08) * smooth((b + 0.24 - t) / 0.16));
-  // A smile narrows the eyes a little.
-  f.blink = Math.max(f.blink, 0.15 * f.smile);
-  for (let i = 1; i < GLANCES.length; i++) {
-    const u = smooth((t - GLANCES[i][0]) / 0.07);
-    f.eyeLeft += (GLANCES[i][1] - GLANCES[i - 1][1]) * u;
-    f.eyeUp += (GLANCES[i][2] - GLANCES[i - 1][2]) * u;
+  for (const start of BLINKS)
+    f.blink = Math.max(f.blink, smooth((t - start) / .075) * smooth((start + .23 - t) / .12));
+  let lastLeft = 0, lastUp = 0;
+  for (const [start, left, up] of GLANCES) {
+    const blend = smooth((t - start) / .09);
+    const follow = smooth((t - start - .09) / .42);
+    f.headLeft += (left - lastLeft) * follow;
+    f.headRoll -= .26 * (left - lastLeft) * follow;
+    f.eyeLeft += (left - lastLeft) * blend;
+    f.eyeUp += (up - lastUp) * blend;
+    lastLeft = left;
+    lastUp = up;
   }
-  // The head keeps moving a little; all of it repeats with the loop.
-  const w = (2 * Math.PI * t) / TALK_SECONDS;
-  f.headLeft = 0.05 * Math.sin(2 * w) + 0.03 * Math.sin(3 * w + 1);
-  f.headUp = 0.035 * Math.sin(3 * w) + 0.03 * mood[1] - 0.04 * mood[2];
-  f.headRoll = 0.03 * Math.sin(w) + 0.02 * Math.sin(4 * w + 2);
+  for (const beat of HEAD_BEATS) {
+    const { phrase } = beat;
+    const prepare = pulse(t, beat.time - .15, .32, .20);
+    const land = pulse(t, beat.time + .08, .24, .46);
+    const direction = phrase === 2 ? -1 : 1;
+    f.headUp += direction * (.031 * prepare - .074 * land);
+    const lean = pulse(t, beat.time + .13, .60, .76);
+    f.headRoll += (phrase % 2 ? -.030 : .020) * lean;
+    f.headLeft += (phrase % 2 ? .042 : -.035) * lean;
+  }
   return f;
 }
+
+const TISSUE_SHAPES: [string, (f: Face, talking: boolean) => number][] = [
+  ["eyeBlink", (f) => f.blink],
+  ["browRaiseL", (f) => f.browUp + f.browBias],
+  ["browRaiseR", (f) => f.browUp - f.browBias],
+  ["browKnit", (f) => f.frown],
+  ["cheekSmile", (f) => f.smile],
+  ["cheekSquint", (f) => f.smile * (1 - f.blink)],
+  ["eyeWiden", (f, talking) => f.browUp * (talking ? .42 : 1) * (1 - f.blink)],
+  ["mouthFrown", (f) => f.frown],
+  ["cheekStretch", (f, talking) => Math.max(0, f.lipWide) * (talking ? .45 : 1)],
+  ["cheekPucker", (f, talking) => Math.max(0, -f.lipWide) * (talking ? .55 : 1)],
+  ["cheekJawOpen", (f) => Math.min(1, f.jaw / .25)],
+];
 
 /** `face(t)` sampled on the scene's face joints (the scene in its rest
  * pose). Undefined when the model has no MakeHuman face rig. */
@@ -261,16 +301,23 @@ function clip(
   const fps = 30,
     frames = Math.round(seconds * fps);
   const times = Array.from({ length: frames + 1 }, (_, i) => i / fps);
+  if (name === "face_talk") {
+    for (const { time } of speechContacts) {
+      if (!times.some(t => Math.fround(t) === Math.fround(time))) times.push(time);
+    }
+    times.sort((a, b) => a - b);
+  }
   const faces = times.map((t) => face(t % seconds));
   const tracks: KeyframeTrack[] = [];
   scene.traverse((object) => {
     const mesh = object as Mesh;
-    const blink = mesh.morphTargetDictionary?.eyeBlink;
-    if (blink !== undefined) {
+    for (const [shape, value] of TISSUE_SHAPES) {
+      const index = mesh.morphTargetDictionary?.[shape];
+      if (index === undefined) continue;
       tracks.push(new NumberKeyframeTrack(
-        `${mesh.uuid}.morphTargetInfluences[${blink}]`,
+        `${mesh.uuid}.morphTargetInfluences[${index}]`,
         times,
-        faces.map((f) => f.blink),
+        faces.map(f => value(f, name === "face_talk")),
       ));
     }
   });
@@ -294,6 +341,10 @@ function clip(
       }
     }
   }
+  // A source-specific F/V calibration seats the lower lip against the incisal edge.
+  const offset: unknown = node("jaw")?.userData.charloomLabiodentalOffsetM;
+  const labiodental = Array.isArray(offset) && offset.length === 2 && offset.every(Number.isFinite)
+    ? new Vector3(0, offset[0], offset[1]) : undefined;
   for (const [joint, slide] of span ? SLIDES : []) {
     const bone = node(joint);
     if (!bone?.parent) continue;
@@ -301,17 +352,23 @@ function clip(
       toLocal = bone.parent.getWorldQuaternion(new Quaternion()).invert(),
       mirror = joint.endsWith(".R") ? -1 : 1,
       d = new Vector3();
+    const lowerLip = joint === "oris01" || joint.startsWith("oris07.");
     const values: number[] = [];
     let moved = false;
     for (const f of faces) {
       const [x, y, z] = slide(f);
-      if (x || y || z) moved = true;
-      d.set(x * mirror, y, z).multiplyScalar(span).applyQuaternion(toLocal).add(rest);
+      d.set(x * mirror, y, z).multiplyScalar(span);
+      if (lowerLip && labiodental) d.addScaledVector(labiodental, f.labiodental);
+      if (d.lengthSq() > 0) moved = true;
+      d.applyQuaternion(toLocal).add(rest);
       values.push(d.x, d.y, d.z);
     }
     if (moved) tracks.push(new VectorKeyframeTrack(`${bone.name}.position`, times, values));
   }
-  for (const [joint, turns] of RIG) {
+  const head = node("head");
+  const rig = name === "face_talk" && head && head.userData.charloomSpeechHeadMotion !== false
+    ? [...RIG, ...speakingTurns(head)] : RIG;
+  for (const [joint, turns] of rig) {
     const bone = node(joint);
     if (!bone) continue;
     const rest = bone.quaternion.clone();
