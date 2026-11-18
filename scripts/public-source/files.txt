@@ -1,6 +1,7 @@
 .gitignore
 AGENTS.md
 README.md
+README.zh-CN.md
 assets/README.md
 docs/local-workspace.md
 docs/mpfb-prior.md
