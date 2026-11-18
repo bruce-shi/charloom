@@ -11,12 +11,15 @@ import {
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import {
+  type AnimationAction,
   AnimationMixer,
+  Color,
+  Matrix4,
+  SkeletonHelper,
   Group,
   Vector3,
   Mesh,
   MeshStandardMaterial,
-  SkinnedMesh,
 } from "three";
 import { clone } from "three/addons/utils/SkeletonUtils.js";
 import type { OrbitControls as Controls } from "three-stdlib";
@@ -38,13 +41,18 @@ export type ViewSettings = {
   clay: boolean;
   wireframe: boolean;
   grid: boolean;
+  skeleton: boolean;
 };
 /** What a mesh is (`charloom_part` extras: "garment", "hair"); the body,
  * eyes and other MakeHuman parts have none. */
-const partOf = (n: Mesh) => (n.userData.charloom_part as string | undefined) ?? "body";
+function partOf(mesh: Mesh) {
+  const part = mesh.userData.charloom_part as string | undefined;
+  // Older transfer exports mark the separate hair mesh as a garment.
+  return part === "garment" && mesh.name === "hair" ? "hair" : part ?? "body";
+}
  
-export type ClipKind = "walk" | "face" | "talk";
-const KINDS: ClipKind[] = ["walk", "face", "talk"];
+export type ClipKind = "walk" | "face" | "talk" | `embedded:${string}`;
+type ClipDurations = Partial<Record<ClipKind, number>>;
 const FACE_CLIP = "face_test";
 /** One playhead shared by every viewport that shows an animated result, so
  * two runs compared side by side walk in step. Until played or scrubbed the
@@ -53,12 +61,16 @@ export class AnimationClock {
   enabled = false;
   playing = false;
   clip: ClipKind = "walk";
-  private durations: Record<ClipKind, number> = { walk: 0, face: 0, talk: 0 };
+  private durations: ClipDurations = {};
+  private models = new Map<object, ClipDurations>();
   get duration() {
-    return this.durations[this.clip];
+    return this.durations[this.clip] ?? 0;
   }
   has(kind: ClipKind) {
-    return this.durations[kind] > 0;
+    return (this.durations[kind] ?? 0) > 0;
+  }
+  embeddedClips() {
+    return Object.keys(this.durations).filter((k): k is `embedded:${string}` => k.startsWith("embedded:"));
   }
   /** Switch clip, back at its start and in the rest pose. */
   setClip(kind: ClipKind) {
@@ -97,11 +109,24 @@ export class AnimationClock {
     this.offset = 0;
     this.emit();
   }
-  setDuration(kind: ClipKind, d: number) {
-    if (d > this.durations[kind]) {
-      this.durations[kind] = d;
+  registerModel(owner: object, durations: ClipDurations) {
+    const update = () => {
+      this.offset = this.time();
+      this.startedAt = performance.now();
+      this.durations = {};
+      for (const registered of this.models.values()) {
+        for (const kind of Object.keys(registered) as ClipKind[]) {
+          this.durations[kind] = Math.max(this.durations[kind] ?? 0, registered[kind] ?? 0);
+        }
+      }
       this.emit();
-    }
+    };
+    this.models.set(owner, durations);
+    update();
+    return () => {
+      this.models.delete(owner);
+      update();
+    };
   }
   subscribe(fn: () => void) {
     this.listeners.add(fn);
@@ -182,6 +207,22 @@ const AssetObject = memo(function AssetObject({
     });
     return object.parent ?? object;
   }, [gltf, matrix]);
+  useEffect(() => {
+    if (!settings.skeleton) return;
+    const helper = new SkeletonHelper(scene);
+    // The overlay is parented to the asset, so its local transform is identity.
+    helper.matrix = new Matrix4();
+    helper.setColors(new Color("#ffbf49"), new Color("#4debe6"));
+    helper.renderOrder = 100;
+    helper.frustumCulled = false;
+    scene.add(helper);
+    invalidate();
+    return () => {
+      helper.removeFromParent();
+      helper.dispose();
+      invalidate();
+    };
+  }, [scene, settings.skeleton, invalidate]);
   const mixer = useMemo(() => {
     if (!clock) return undefined;
     const m = new AnimationMixer(scene);
@@ -192,30 +233,31 @@ const AssetObject = memo(function AssetObject({
     const { face, talk } = embeddedFace && embeddedTalk
       ? { face: embeddedFace, talk: embeddedTalk }
       : faceClips(scene);
-    return {
-      mixer: m,
-      actions: {
-        walk: walk && m.clipAction(walk),
-        face: face && m.clipAction(face),
-        talk: talk && m.clipAction(talk),
-      },
-    };
+    const actions = new Map<ClipKind, AnimationAction>();
+    if (walk) actions.set("walk", m.clipAction(walk));
+    if (face) actions.set("face", m.clipAction(face));
+    if (talk) actions.set("talk", m.clipAction(talk));
+    for (const clip of gltf.animations) {
+      if (clip !== walk && clip !== embeddedFace && clip !== embeddedTalk) {
+        actions.set(`embedded:${clip.name}`, m.clipAction(clip));
+      }
+    }
+    return { mixer: m, actions };
   }, [scene, gltf, clock]);
   useEffect(() => {
     if (!mixer || !clock) return;
-    for (const kind of KINDS) {
-      const action = mixer.actions[kind];
-      if (action) clock.setDuration(kind, action.getClip().duration);
-    }
+    const durations = Object.fromEntries(
+      Array.from(mixer.actions, ([kind, action]) => [kind, action.getClip().duration]),
+    );
+    const unregister = clock.registerModel(mixer, durations);
     let active: ClipKind | null = null;
     const sync = () => {
       const wanted = clock.enabled ? clock.clip : null;
       if (wanted !== active) {
+        // The mixer restores the authored local transforms when an action stops.
+        // Inverse bind matrices may include mesh-space scaling.
         mixer.mixer.stopAllAction();
-        scene.traverse((n) => {
-          if (n instanceof SkinnedMesh) n.skeleton.pose();
-        });
-        if (wanted) mixer.actions[wanted]?.reset().play();
+        if (wanted) mixer.actions.get(wanted)?.reset().play();
         active = wanted;
       }
       invalidate();
@@ -224,12 +266,13 @@ const AssetObject = memo(function AssetObject({
     const unsubscribe = clock.subscribe(sync);
     return () => {
       unsubscribe();
+      unregister();
       mixer.mixer.stopAllAction();
       mixer.mixer.uncacheRoot(scene);
     };
   }, [mixer, clock, scene, invalidate]);
   useFrame(() => {
-    const action = clock?.enabled && mixer?.actions[clock.clip];
+    const action = clock?.enabled && mixer?.actions.get(clock.clip);
     if (!mixer || !clock || !action) return;
     mixer.mixer.setTime(clock.time() % action.getClip().duration);
     if (clock.playing) invalidate();
@@ -247,7 +290,9 @@ const AssetObject = memo(function AssetObject({
     scene.updateWorldMatrix(true, true);
     const l = at("eye.L"),
       r = at("eye.R"),
-      p = l && r ? l.add(r).multiplyScalar(0.5) : at("head");
+      head = at("Head"),
+      crown = head && at("head_end"),
+      p = l && r ? l.add(r).multiplyScalar(0.5) : at("head") ?? (head && crown ? head.lerp(crown, 0.5) : head);
     if (p) onFace(p.toArray());
   }, [scene, onFace]);
   useEffect(() => {

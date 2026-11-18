@@ -276,6 +276,15 @@
           "type": "string",
           "default": ""
         },
+        "proportions": {
+          "type": "string",
+          "enum": ["human", "stylized", "extreme"]
+        },
+        "template_warp": {
+          "description": "Coordinate domain for interpolating measured landmark offsets on the template.",
+          "enum": ["spatial", "frontal_depth_preserving"],
+          "default": "spatial"
+        },
         "sex": {
           "description": "female / male / unknown — which MakeHuman prior fits best.",
           "type": "string",

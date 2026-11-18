@@ -100,7 +100,7 @@ const RIG: [string, Turn[]][] = [
  * A head-only rig receives the whole turn. Model axes keep rolled bones aligned. */
 function speakingTurns(head: Object3D): [string, Turn[]][] {
   const shares = new Map([["neck03", .22], ["neck02", .15], ["neck01", .08]]);
-  const chain: [string, number][] = [["head", .55]];
+  const chain: [string, number][] = [[head.name, .55]];
   for (let parent = head.parent; parent; parent = parent.parent) {
     const share = shares.get(parent.name);
     if (share !== undefined) chain.push([parent.name, share]);
@@ -274,6 +274,9 @@ function talkFace(t: number): Face {
 
 const TISSUE_SHAPES: [string, (f: Face, talking: boolean) => number][] = [
   ["eyeBlink", (f) => f.blink],
+  ["gazeLeft", (f) => f.eyeLeft / .35],
+  ["gazeUp", (f) => f.eyeUp / .3],
+  ["lipLabiodental", (f) => f.labiodental],
   ["browRaiseL", (f) => f.browUp + f.browBias],
   ["browRaiseR", (f) => f.browUp - f.browBias],
   ["browKnit", (f) => f.frown],
@@ -287,7 +290,7 @@ const TISSUE_SHAPES: [string, (f: Face, talking: boolean) => number][] = [
 ];
 
 /** `face(t)` sampled on the scene's face joints (the scene in its rest
- * pose). Undefined when the model has no MakeHuman face rig. */
+ * pose) or its calibrated facial morph targets. */
 function clip(
   scene: Object3D,
   name: string,
@@ -297,7 +300,11 @@ function clip(
   // three drops the dot from node names ("eye.L" -> "eyeL").
   const node = (n: string) =>
     scene.getObjectByName(n) ?? scene.getObjectByName(n.replaceAll(".", ""));
-  if (!node("jaw")) return undefined;
+  let hasMorphFace = false;
+  scene.traverse(object => {
+    if ((object as Mesh).morphTargetDictionary?.cheekJawOpen !== undefined) hasMorphFace = true;
+  });
+  if (!node("jaw") && !hasMorphFace) return undefined;
   const fps = 30,
     frames = Math.round(seconds * fps);
   const times = Array.from({ length: frames + 1 }, (_, i) => i / fps);
@@ -365,7 +372,7 @@ function clip(
     }
     if (moved) tracks.push(new VectorKeyframeTrack(`${bone.name}.position`, times, values));
   }
-  const head = node("head");
+  const head = node("head") ?? (hasMorphFace ? node("Head") : undefined);
   const rig = name === "face_talk" && head && head.userData.charloomSpeechHeadMotion !== false
     ? [...RIG, ...speakingTurns(head)] : RIG;
   for (const [joint, turns] of rig) {

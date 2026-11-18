@@ -1,11 +1,19 @@
 """Prepare source-coloured body and separate independently skinned garment meshes."""
 
+import sys
 from copy import deepcopy
+from pathlib import Path
+
 import igl
 import numpy as np
 
+sys.path.append(str(Path(__file__).resolve().parents[2] / "blender" / "charloom"))
+from garment_binding import sleeve_weights
+
+from .garment_seams import match_layer_seam
 from .guide import rasterize
 from .scaffold import bary_weights
+from .scan import transforms
 
 
 def bake_skin(g, body, scan, vertices, skin_ids, size):
@@ -46,8 +54,22 @@ def bake_skin(g, body, scan, vertices, skin_ids, size):
     trusted = visible & central & (distances < 0.025 * height)
     if np.count_nonzero(trusted) >= 64:
         neutral = np.median(colors[trusted], axis=0)
-        blend = np.clip(1.0 - distances / (0.03 * height), 0.0, 1.0) * visible
-        colors = neutral + (colors - neutral) * blend[:, None]
+    else:
+        # Fully dressed scans may expose only the head. Sample the reviewed
+        # skin surface itself, weighted by triangle area, so the large hidden
+        # body UV area cannot repeatedly vote for one collar or beard texel.
+        corners = vertices[skin]
+        areas = np.linalg.norm(np.cross(corners[:, 1]-corners[:, 0],
+                                        corners[:, 2]-corners[:, 0]), axis=1)
+        if areas.sum() <= 0:
+            raise ValueError("Reviewed skin contains no measurable surface")
+        samples = scan.colors(skin_ids, np.full((len(skin_ids), 3), 1 / 3))
+        order = np.argsort(samples, axis=0)
+        cumulative = np.cumsum(areas[order], axis=0)
+        median_rows = np.argmax(cumulative >= areas.sum() / 2, axis=0)
+        neutral = samples[order[median_rows, np.arange(3)], np.arange(3)]
+    blend = np.clip(1.0 - distances / (0.03 * height), 0.0, 1.0) * visible
+    colors = neutral + (colors - neutral) * blend[:, None]
     pixels[mask] = np.rint(colors * 255).clip(0, 255).astype("uint8")
     from scipy.ndimage import distance_transform_edt
 
@@ -88,24 +110,83 @@ def write_models(g, scan, vertices, names, owners, out, size, prior, guide, guid
     tree.init(v, tri)
     joints = g.array(body["attributes"]["JOINTS_0"]).copy()
     weights = g.array(body["attributes"]["WEIGHTS_0"]).copy()
+    skin_id = body_node["skin"]
+    worlds, _ = transforms(g.doc)
+    skeleton = g.doc["skins"][skin_id]["joints"]
+    bone_names = [g.doc["nodes"][i]["name"] for i in skeleton]
+    centers = worlds[skeleton, :3, 3]
     copied_materials = {}
     reports = []
-    for owner, name in enumerate(names[1:], 1):
+    garments = list(enumerate(names[1:], 1))
+    prepared = {}
+    for owner, name in sorted(
+        garments, key=lambda item: pieces[item[1]].get("layer", 0)
+    ):
         face_ids = np.flatnonzero(owners == owner)
         if not len(face_ids):
             raise ValueError(f"No triangles assigned to garment {name}")
+        rig, fabric = rig_for(pieces[name], library)
+        # Bind all material islands together before splitting the glTF primitives.
+        garment_ids, remap = np.unique(scan.faces[face_ids], return_inverse=True)
+        garment_faces = remap.reshape(-1, 3)
+        garment_points = vertices[garment_ids]
+        squared, near, closest = tree.squared_distance(v, tri, garment_points)
+        neighbors = tri[near]
+        bary = igl.barycentric_coordinates(
+            closest, *(v[neighbors[:, k]] for k in range(3))
+        )
+        garment_joints, garment_weights = bary_weights(joints, weights, neighbors, bary)
+        refined = None
+        if rig["mode"] == "body":
+            refined = sleeve_weights(
+                garment_points,
+                garment_faces,
+                garment_joints,
+                garment_weights,
+                np.sqrt(squared),
+                bone_names,
+                centers,
+            )
+            if refined is not None:
+                garment_joints, garment_weights = refined
+                for lower_name, lower in prepared.items():
+                    if lower["rig"]["mode"] != "body" or pieces[lower_name].get(
+                        "layer", 0
+                    ) >= pieces[name].get("layer", 0):
+                        continue
+                    matched = match_layer_seam(
+                        (
+                            garment_points,
+                            garment_faces,
+                            garment_joints,
+                            garment_weights,
+                        ),
+                        lower["mesh"],
+                    )
+                    if matched is not None:
+                        garment_joints, garment_weights = matched
+        prepared[name] = dict(
+            ids=garment_ids,
+            face_ids=face_ids,
+            rig=rig,
+            fabric=fabric,
+            refined=refined is not None,
+            mesh=(garment_points, garment_faces, garment_joints, garment_weights),
+        )
+
+    for _, name in garments:
+        entry = prepared[name]
+        garment_ids, face_ids = entry["ids"], entry["face_ids"]
+        rig, fabric = entry["rig"], entry["fabric"]
+        garment_points, garment_faces, garment_joints, garment_weights = entry["mesh"]
         primitives = []
-        for mat in np.unique(scan.face_material[face_ids]):
-            rows = scan.faces[face_ids[scan.face_material[face_ids] == mat]]
+        materials = scan.face_material[face_ids]
+        for mat in np.unique(materials):
+            rows = garment_faces[materials == mat]
             selection, inverse = np.unique(rows.ravel(), return_inverse=True)
             part_faces = inverse.reshape(-1, 3)
-            points = vertices[selection]
-            _, near, closest = tree.squared_distance(v, tri, points)
-            neighbors = tri[near]
-            bary = igl.barycentric_coordinates(
-                closest, *(v[neighbors[:, k]] for k in range(3))
-            )
-            ji, wt = bary_weights(joints, weights, neighbors, bary)
+            points = garment_points[selection]
+            ji, wt = garment_joints[selection], garment_weights[selection]
             if mat not in copied_materials:
                 copied_materials[mat] = material(g, scan.glb, {"material": int(mat)})
             prim = dict(
@@ -116,13 +197,14 @@ def write_models(g, scan, vertices, names, owners, out, size, prior, guide, guid
                     "NORMAL": add(
                         g, normals(points, part_faces)[0].astype("<f4"), "VEC3"
                     ),
-                    "TEXCOORD_0": add(g, scan.uv[selection].astype("<f4"), "VEC2"),
+                    "TEXCOORD_0": add(
+                        g, scan.uv[garment_ids[selection]].astype("<f4"), "VEC2"
+                    ),
                     "JOINTS_0": add(g, ji, "VEC4", 5123),
                     "WEIGHTS_0": add(g, wt, "VEC4"),
                 },
             )
             primitives.append(prim)
-        rig, fabric = rig_for(pieces[name], library)
         chains.extend(bind(g, primitives, body_node["skin"], name, rig, fabric))
         node = {
             "name": name,
@@ -139,9 +221,15 @@ def write_models(g, scan, vertices, names, owners, out, size, prior, guide, guid
         )
         g.doc["scenes"][g.doc.get("scene", 0)]["nodes"].append(len(g.doc["nodes"]))
         g.doc["nodes"].append(node)
-        reports.append(
-            {"name": name, "triangles": len(face_ids), "rig": rig, "fabric": fabric}
-        )
+        report = {
+            "name": name,
+            "triangles": len(face_ids),
+            "rig": rig,
+            "fabric": fabric,
+        }
+        if entry["refined"]:
+            report["flared_sleeves"] = True
+        reports.append(report)
     if chains:
         g.doc.setdefault("extras", {})["charloomClothChains"] = chains
     covered = covered_triangles(g, body, scan, vertices, names, owners)

@@ -204,7 +204,10 @@ def load_annotations(scan, path):
             (path.parent / "views" / (name + ".png")).read_bytes()
         ).hexdigest()
         pinned = guide.get("view_sha256", {}).get(name)
-        if digest != views["images"][name]["sha256"] or (pinned and pinned != digest):
+        recorded = views.get("images", {}).get(name, {}).get("sha256")
+        if not (pinned or recorded):
+            raise ValueError(f"Missing reviewed image hash for marked view: {name}")
+        if (recorded and digest != recorded) or (pinned and pinned != digest):
             raise ValueError(f"Marked image changed: {name}")
     return guide, views, cams
 

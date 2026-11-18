@@ -3,14 +3,30 @@
 import json
 
 import cv2
+import igl
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
-from scipy.spatial import cKDTree
 
 from .guide import project, rasterize
 from .scan import transform_points
 from roster.mesh import adjacency
+
+
+def closest_contour(points, vertices, edges, confidence):
+    """Project onto the closed contour edges without attracting skin to sample vertices."""
+    distance2, selected, closest = igl.point_mesh_squared_distance(
+        np.column_stack((points, np.zeros(len(points)))),
+        np.column_stack((vertices, np.zeros(len(vertices)))),
+        edges,
+    )
+    start, end = vertices[edges[selected]].transpose(1, 0, 2)
+    tangent = end - start
+    fraction = np.sum((closest[:, :2] - start) * tangent, axis=1) / np.maximum(
+        np.sum(tangent**2, axis=1), 1.e-20
+    )
+    a, b = confidence[edges[selected]].T
+    return np.sqrt(distance2), closest[:, :2], a + fraction * (b - a)
 
 
 def fit_body(glb, guide_path, cams, frame):
@@ -85,7 +101,13 @@ def fit_body(glb, guide_path, cams, frame):
             or not np.isfinite(weight).all()
         ):
             raise ValueError(f"Invalid registered silhouette in {view}")
-        anchors.append((cam, uv, weight, cKDTree(uv)))
+        edges = []
+        start = 0
+        for loop in loops:
+            indices = np.arange(start, start + len(loop))
+            edges.append(np.column_stack((indices, np.roll(indices, -1))))
+            start += len(loop)
+        anchors.append((cam, uv, weight, np.concatenate(edges)))
     inverse = np.linalg.inv(frame)
     base = points.copy()
     stats = []
@@ -95,7 +117,7 @@ def fit_body(glb, guide_path, cams, frame):
         diag = [np.zeros(len(points)) for _ in range(3)]
         rhs = np.zeros_like(points)
         errors = []
-        for cam, uv, confidence, tree in anchors:
+        for cam, uv, confidence, edges in anchors:
             pix = project(cam, transform_points(points, inverse))
             ids, bary = rasterize(pix, triangles, cam["width"], cam["height"])
             mask = (ids >= 0).astype(np.uint8)
@@ -104,15 +126,15 @@ def fit_body(glb, guide_path, cams, frame):
             # Uniformly sample the silhouette to avoid weighting by tessellation density.
             ys, xs = ys[::3], xs[::3]
             at = np.column_stack((xs + 0.5, ys + 0.5))
-            dist, match = tree.query(at)
+            dist, target, trust = closest_contour(at, uv, edges, confidence)
             tri = triangles[ids[ys, xs]]
             blend = bary[ys, xs]
             good = (free[tri] * blend).sum(1) > 0.90
-            trust = confidence[match].clip(0, 1)
+            trust = trust.clip(0, 1)
             good &= trust > 0.05
             if not good.any():
                 continue
-            offset = uv[match[good]] - at[good]
+            offset = target[good] - at[good]
             norm = np.maximum(1.0, np.linalg.norm(offset, axis=1) / 12.0)
             scale = cam["meters_per_pixel"]
             basis = (

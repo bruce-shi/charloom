@@ -88,6 +88,7 @@ def reviewed_owners(
     from scipy.sparse.csgraph import connected_components
 
     candidates = {}
+    previous = {}
     choices = {}
     for source, field in ((saved_evidence, "candidates"), (review_input, "decisions")):
         if source is None:
@@ -98,7 +99,9 @@ def reviewed_owners(
         if field == "decisions":
             choices = doc[field]
         else:
-            candidates = {c["id"]: c for c in doc[field]}
+            previous = {c["id"]: c for c in doc[field]}
+            if review_input is not None:
+                candidates = previous.copy()
 
     def identity(rows):
         return hashlib.sha256(np.asarray(rows, dtype="<u8").tobytes()).hexdigest()
@@ -151,6 +154,16 @@ def reviewed_owners(
                 bounds_m=[coords.min(0).tolist(), coords.max(0).tolist()],
                 status="uncertain",
             )
+            # Reuse a completed review only for the exact still-unassigned
+            # source faces. Revised brush marks and renamed pieces take priority.
+            prior = previous.get(key, {})
+            action = prior.get("status")
+            piece = prior.get("assigned_piece")
+            if key not in choices and (
+                action in ("skin", "brow", "internal") or
+                (action == "piece" and piece in names[1:])
+            ):
+                choices[key] = dict(action=action, name=piece)
             if key in choices:
                 apply(ids, choices[key])
                 if choices[key]["action"] == "brow":

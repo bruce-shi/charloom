@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
+from animation.rig_identity import signature
 from animation.keys import deduplicate
 from animation.recipe import build
 from animation.scene import Scene, SLICES
@@ -169,7 +170,9 @@ def run(args):
             Glb(args.asset).write(model)
             result = inspect(Scene(model))
         elif task == "retarget":
-            Glb(args.asset).write(model)
+            original = Glb(args.asset)
+            fixed_rig = signature(original)
+            original.write(model)
             cfg = read_json(args.config, {})
             samples = scratch / "source.npz"
             sample_motion(args.source, samples, cfg, args.clip)
@@ -197,6 +200,10 @@ def run(args):
                 )
             result = dict(effectors=reports, pose=solved.tolist())
         result["deduplicated_samplers"] = deduplicate(model)
+        if task == "retarget":
+            if signature(Glb(model)) != fixed_rig:
+                raise ValueError("Retarget changed the target skeleton or skin binding")
+            result["fixed_target_rig"] = fixed_rig
         result.update(file=str(dest / model.name), validation=validate(Scene(model)))
         (folder / "report.json").write_text(json.dumps(result, indent=2))
         folder.rename(dest)

@@ -40,11 +40,13 @@ export default function CharacterPage() {
       clay: false,
       wireframe: false,
       grid: true,
+      skeleton: false,
     }),
     [viewName, setViewName] = useState("正面"),
     [face, setFace] = useState<Point3 | null>(null);
   // Walk or face test; kept when the run or model changes.
   const clip = useRef<ClipKind>("walk");
+  const focusWhenFaceLoads = useRef(false);
   const stageId = params.get("stage");
   const stage = selected?.stages?.find((s) => s.id === stageId) ?? selected?.stages?.[0];
   const shared = useRef<CameraPose>({
@@ -62,13 +64,14 @@ export default function CharacterPage() {
     const c = new AnimationClock();
     c.clip = clip.current;
     return c;
-  }, [characterId, stage?.file, leftStage?.file]);
+  }, [characterId]);
   useEffect(() => {
     setFace(null);
   }, [stage?.file]);
   const center = selected?.bodyCenter ?? ([0, 0.875, 0] as Point3);
   const camera = useCallback(
     (direction: string) => {
+      focusWhenFaceLoads.current = false;
       const d = 3.65;
       const offset: Point3 =
         direction === "侧面"
@@ -93,6 +96,7 @@ export default function CharacterPage() {
   const faceCamera = useCallback(
     (direction: "面部" | "面部 3/4") => {
       if (!face) return;
+      focusWhenFaceLoads.current = false;
       const d = 0.8,
         a = direction === "面部" ? 0 : Math.PI / 5;
       shared.current = {
@@ -110,17 +114,19 @@ export default function CharacterPage() {
     (kind: ClipKind) => {
       clip.current = kind;
       clock.setClip(kind);
-      if (kind === "walk") camera("正面");
-      else faceCamera("面部");
+      if (kind !== "face" && kind !== "talk") camera("正面");
+      else if (face) faceCamera("面部");
+      else focusWhenFaceLoads.current = true;
     },
-    [clock, camera, faceCamera],
+    [clock, camera, faceCamera, face],
   );
   useEffect(() => {
     camera("正面");
+    focusWhenFaceLoads.current = clip.current === "face" || clip.current === "talk";
   }, [characterId, camera]);
-  // A new run or model opened during the face test: back on its face.
+  // Layer replacements reuse this character's coordinate frame and camera.
   useEffect(() => {
-    if (face && clip.current !== "walk") faceCamera("面部");
+    if (face && focusWhenFaceLoads.current) faceCamera("面部");
   }, [face, faceCamera]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -268,6 +274,7 @@ export default function CharacterPage() {
             [
               ["clay", "灰模"],
               ["wireframe", "线框"],
+              ["skeleton", "骨骼"],
               ["grid", "地面"],
             ] as const
           ).map(([key, label]) => (
@@ -395,6 +402,11 @@ function WalkBar({
             onClick={() => setClip(kind)}
           >
             {name}
+          </button>
+        ))}
+        {clock.embeddedClips().map((kind) => (
+          <button key={kind} aria-pressed={clock.clip === kind} onClick={() => setClip(kind)}>
+            {kind === "embedded:running" ? "跑步" : kind.slice("embedded:".length)}
           </button>
         ))}
       </div>

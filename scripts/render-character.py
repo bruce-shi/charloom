@@ -5,11 +5,50 @@ import io
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
-
 from animation.surface import Surface
+from PIL import Image
 from transfer.guide import camera, project, rasterize
 from transfer.scan import Scan
+
+
+def srgb_to_linear(rgb):
+    return np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)
+
+
+def linear_to_srgb(rgb):
+    return np.where(
+        rgb <= 0.0031308, 12.92 * rgb, 1.055 * np.maximum(rgb, 0) ** (1 / 2.4) - 0.055
+    )
+
+
+def shade(mesh, faces, bary, vertex_color, lighting, clay):
+    if clay:
+        return linear_to_srgb(srgb_to_linear(0.7) * lighting) * np.ones((1, 3))
+    uv = np.einsum("ij,ijk->ik", bary, mesh.uv[mesh.faces[faces]])
+    material_ids = mesh.face_material[faces]
+    result = np.empty((len(faces), 3))
+    for mid in np.unique(material_ids):
+        selected = material_ids == mid
+        material = mesh.materials[mid] if mid >= 0 else {}
+        pbr = material.get("pbrMetallicRoughness", {})
+        diffuse = vertex_color[selected] * pbr.get("baseColorFactor", [1, 1, 1, 1])[:3]
+        if "baseColorTexture" in pbr:
+            diffuse *= mesh.texture_rgb(pbr["baseColorTexture"], uv[selected])
+        if "KHR_materials_unlit" in material.get("extensions", {}):
+            result[selected] = diffuse
+            continue
+        emission = np.asarray(material.get("emissiveFactor", [0, 0, 0]))
+        if np.any(emission) and "emissiveTexture" in material:
+            emission = emission * mesh.texture_rgb(
+                material["emissiveTexture"], uv[selected]
+            )
+        strength = (
+            material.get("extensions", {})
+            .get("KHR_materials_emissive_strength", {})
+            .get("emissiveStrength", 1)
+        )
+        result[selected] = diffuse * lighting[selected] + emission * strength
+    return linear_to_srgb(result)
 
 
 def render_views(
@@ -41,10 +80,14 @@ def render_views(
         view = g.doc["bufferViews"][img["bufferView"]]
         start = view.get("byteOffset", 0)
         mesh.textures.append(
-            np.asarray(
-                Image.open(
-                    io.BytesIO(g.blob[start : start + view["byteLength"]])
-                ).convert("RGB")
+            srgb_to_linear(
+                np.asarray(
+                    Image.open(
+                        io.BytesIO(g.blob[start : start + view["byteLength"]])
+                    ).convert("RGB"),
+                    dtype=np.float32,
+                )
+                / 255
             )
         )
     uv = []
@@ -104,19 +147,16 @@ def render_views(
             face = ids[mask]
             weights = bary[mask]
             f = mesh.faces[face]
-            rgb = mesh.colors(face, weights) * np.einsum(
-                "ij,ijk->ik", weights, colors[f]
-            )
-            if clay:
-                rgb[:] = 0.7
+            vertex_color = np.einsum("ij,ijk->ik", weights, colors[f])
             normal = np.cross(
                 points[f[:, 1]] - points[f[:, 0]], points[f[:, 2]] - points[f[:, 0]]
             )
             normal /= np.maximum(np.linalg.norm(normal, axis=1, keepdims=True), 1e-15)
             light = np.array([0.3, 0.5, 0]) - c["forward"]
-            rgb *= (0.5 + 0.5 * np.abs(normal @ (light / np.linalg.norm(light))))[
+            lighting = (0.5 + 0.5 * np.abs(normal @ (light / np.linalg.norm(light))))[
                 :, None
             ]
+            rgb = shade(mesh, face, weights, vertex_color, lighting, clay)
             pixels = np.full((640, 512, 3), 105, np.uint8)
             pixels[mask] = np.clip(rgb * 255, 0, 255).astype(np.uint8)
             label = f"{clip}-{t:.2f}" if clip else "rest"

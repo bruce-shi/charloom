@@ -17,6 +17,35 @@ JOINTS = {
 }
 
 
+def landmark_warp(old, wanted, mode="spatial"):
+    """Interpolate measured landmark displacements with an explicit depth policy.
+
+    Frontal measurements constrain where the body axis sits in depth, but do
+    not measure the anterior/posterior thickness around that axis. Opting into
+    the frontal field preserves the native depth difference at each XY point.
+    Spatial fitting remains the default for overlapping or nonfrontal poses.
+    """
+    if mode not in ("spatial", "frontal_depth_preserving"):
+        raise ValueError(f"Unknown template_warp mode: {mode}")
+    dimensions = slice(None) if mode == "spatial" else slice(0, 2)
+    coordinates = old[:, dimensions]
+    if mode == "frontal_depth_preserving":
+        if np.linalg.matrix_rank(coordinates - coordinates.mean(0)) < 2:
+            raise ValueError("Frontal template warp needs distinct 2D landmark positions")
+        distances = np.linalg.norm(coordinates[:, None] - coordinates[None, :], axis=2)
+        np.fill_diagonal(distances, np.inf)
+        if np.any(distances < 1e-5):
+            raise ValueError("Overlapping frontal landmarks require spatial template warp")
+    field = RBFInterpolator(
+        coordinates, wanted - old, kernel="thin_plate_spline", smoothing=0.00005
+    )
+
+    def warp(points):
+        return points + field(points[:, dimensions])
+
+    return warp
+
+
 def fit_template(g, resolved):
     from roster.mesh_output import add, normals
 
@@ -60,13 +89,10 @@ def fit_template(g, resolved):
     def dental(points):
         return mouth_new + dental_rotation.apply(points - mouth_old) * dental_scale
 
-    # Warp the body and its shape targets through the observed joint positions.
-    interpolator = RBFInterpolator(
-        old, wanted - old, kernel="thin_plate_spline", smoothing=0.00005
-    )
-
-    def warp(points):
-        return points + interpolator(points)
+    # The caller explicitly selects frontal depth preservation only after
+    # reviewing the pose and measuring hidden body sections independently.
+    warp_mode = resolved.get("subject", {}).get("template_warp", "spatial")
+    warp = landmark_warp(old, wanted, warp_mode)
 
     orig_joints = world[joints, :3, 3]
     moved = warp(orig_joints)
@@ -128,7 +154,8 @@ def fit_template(g, resolved):
             original = g.array(attr["POSITION"]).copy()
             deform = dental if name in ("teeth", "tongue") else warp
             points = deform(original)
-            tri = g.array(prim["indices"]).reshape(-1, 3)
+            # Appending attributes can relocate the GLB byte buffer.
+            tri = g.array(prim["indices"]).reshape(-1, 3).copy()
             attr["POSITION"] = add(g, points.astype("<f4"), "VEC3")
             attr["NORMAL"] = add(g, normals(points, tri)[0].astype("<f4"), "VEC3")
             for target in prim.get("targets", []):
@@ -138,6 +165,7 @@ def fit_template(g, resolved):
                 )
                 target.pop("NORMAL", None)
     return {
+        "template_warp": warp_mode,
         "joints": len(joints),
         "anchors": len(old),
         "max_anchor_error_mm": float(

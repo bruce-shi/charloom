@@ -6,9 +6,26 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+from roster.mesh import Glb
 from scipy.spatial.transform import Rotation
 
-from roster.mesh import Glb
+
+def sample_rgb(image, uv):
+    """Bilinearly sample an RGB texture with repeating UV coordinates."""
+    height, width = image.shape[:2]
+    point = (uv % 1.0) * [width, height] - 0.5
+    floor = np.floor(point).astype(int)
+    frac = point - floor
+    rgb = np.zeros((len(point), 3))
+    for dx, dy in ((0, 0), (0, 1), (1, 0), (1, 1)):
+        w = (frac[:, 0] if dx else 1 - frac[:, 0]) * (
+            frac[:, 1] if dy else 1 - frac[:, 1]
+        )
+        rgb += (
+            w[:, None]
+            * image[(floor[:, 1] + dy) % height, (floor[:, 0] + dx) % width]
+        )
+    return rgb
 
 
 def transforms(doc):
@@ -111,6 +128,10 @@ class Scan:
         self.uv = np.concatenate(uv)
         self.face_material = np.concatenate(materials)
 
+    def texture_rgb(self, texture, uv):
+        image = self.textures[self.glb.doc["textures"][texture["index"]]["source"]]
+        return sample_rgb(image, uv)
+
     def colors(self, face_ids, barycentric):
         """Sample the original base color and factor with bilinear interpolation."""
         mids = self.face_material[face_ids]
@@ -126,21 +147,7 @@ class Scan:
             if tex is None:
                 colors[use] = factor
                 continue
-            image = self.textures[self.glb.doc["textures"][tex["index"]]["source"]]
-            height, width = image.shape[:2]
-            point = (uv[use] % 1.0) * [width, height] - 0.5
-            floor = np.floor(point).astype(int)
-            frac = point - floor
-            rgb = np.zeros((len(point), 3))
-            for dx, dy in ((0, 0), (0, 1), (1, 0), (1, 1)):
-                w = (frac[:, 0] if dx else 1 - frac[:, 0]) * (
-                    frac[:, 1] if dy else 1 - frac[:, 1]
-                )
-                rgb += (
-                    w[:, None]
-                    * image[(floor[:, 1] + dy) % height, (floor[:, 0] + dx) % width]
-                )
-            colors[use] = rgb * factor / 255
+            colors[use] = self.texture_rgb(tex, uv[use]) * factor / 255
         return colors
 
     def working_frame(self, prior, front_view):

@@ -270,6 +270,15 @@ def retarget(samples, model, name, config):
                     np.ptp(rest[list(mapping.values()), 1, 3]), 1e-8
                 )
             move = alignment.apply(poses[:, j, :3, 3] - rest[j, :3, 3]) * scale
+            # An in-place cycle removes net travel along selected world axes.
+            # Retain each step's hip sway, bounce and authored starting offset.
+            axes = config.get("in_place_axes", [])
+            if not isinstance(axes, list) or any(axis not in ("x", "y", "z") for axis in axes):
+                raise ValueError("in_place_axes must list world axes x, y or z")
+            if axes and times[-1] > times[0]:
+                columns = ["xyz".index(axis) for axis in set(axes)]
+                phase = (times - times[0]) / (times[-1] - times[0])
+                move[:, columns] -= phase[:, None] * (move[-1, columns] - move[0, columns])
             local = (
                 np.linalg.solve(world[parent, :3, :3], move.T).T
                 if parent is not None
