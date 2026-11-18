@@ -1,0 +1,28 @@
+{
+  "schema_version": "0.1",
+  "asset": "../fixtures/local-myth/starbow-adept.glb",
+  "name": "bow_grip_check",
+  "duration": 1.0333333015441895,
+  "fps": 60,
+  "layers": [
+    {
+      "clip": "walk"
+    }
+  ],
+  "attachments": [
+    {
+      "node": "bow_root",
+      "driver": "LeftHand",
+      "start": 0,
+      "end": 1.0333333015441895,
+      "reference_clip": "walk",
+      "reference_time": 0,
+      "release": "hold_world"
+    }
+  ],
+  "solver": {
+    "iterations": 120,
+    "tolerance_m": 0.0005,
+    "rotation_tolerance_rad": 0.01
+  }
+}

@@ -1,5 +1,21 @@
 /target/
 /out/
+/.cache/
 /viewer/node_modules/
 /viewer/dist/
+/viewer/src/generated/wasm/
 .DS_Store
+/fixtures/local-myth/
+/fixtures/mixamo/*.fbx
+/fixtures/quaternius/assets/
+/fixtures/quaternius/*.zip
+# Large binary fixtures stay on disk, out of git.
+/fixtures/templates/
+/fixtures/local-meshy-raw/
+/fixtures/quaternius/*.glb
+/.claude/worktrees/
+
+__pycache__/
+/assets/private/
+.env
+.env.*

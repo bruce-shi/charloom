@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+branch=$(git symbolic-ref --quiet --short HEAD) || exit 0
+[ "$branch" = "$(git config --get charloom.publicBranch)" ] || exit 0
+uv=$(git config --get charloom.publicUv)
+root=$(git rev-parse --show-toplevel)
+exec "$uv" run --script "$root/scripts/public-source/sync.py"

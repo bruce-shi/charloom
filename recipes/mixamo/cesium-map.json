@@ -1,0 +1,26 @@
+{
+  "fps": 30,
+  "joint_map": {
+    "Skeleton_torso_joint_1": "mixamorig:Hips",
+    "Skeleton_torso_joint_2": "mixamorig:Spine1",
+    "torso_joint_3": "mixamorig:Spine2",
+    "Skeleton_neck_joint_1": "mixamorig:Neck",
+    "Skeleton_neck_joint_2": "mixamorig:Head",
+    "leg_joint_R_1": "mixamorig:RightUpLeg",
+    "leg_joint_R_2": "mixamorig:RightLeg",
+    "leg_joint_R_3": "mixamorig:RightFoot",
+    "leg_joint_R_5": "mixamorig:RightToeBase",
+    "leg_joint_L_1": "mixamorig:LeftUpLeg",
+    "leg_joint_L_2": "mixamorig:LeftLeg",
+    "leg_joint_L_3": "mixamorig:LeftFoot",
+    "leg_joint_L_5": "mixamorig:LeftToeBase",
+    "Skeleton_arm_joint_R": "mixamorig:RightArm",
+    "Skeleton_arm_joint_R__2_": "mixamorig:RightForeArm",
+    "Skeleton_arm_joint_R__3_": "mixamorig:RightHand",
+    "Skeleton_arm_joint_L__4_": "mixamorig:LeftArm",
+    "Skeleton_arm_joint_L__3_": "mixamorig:LeftForeArm",
+    "Skeleton_arm_joint_L__2_": "mixamorig:LeftHand"
+  },
+  "min_target_coverage": 1,
+  "align_reference_chains": true
+}

@@ -1,0 +1,14 @@
+schema_version = "1.0.0"
+id = "charloom"
+version = "0.2.0"
+name = "Charloom"
+tagline = "Bind scanned characters and edit their outfits and animation"
+maintainer = "Charloom"
+type = "add-on"
+tags = ["Animation", "Rigging"]
+blender_version_min = "4.4.0"
+license = ["SPDX:GPL-3.0-or-later"]
+[permissions]
+files = "Read local scans and write character builds and GLB exports"
+[build]
+paths_exclude_pattern = ["__pycache__/", "*.pyc"]

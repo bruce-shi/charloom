@@ -1,0 +1,13 @@
+{
+  "schema_version": "0.1",
+  "asset": "../fixtures/local-myth/crossbow-guard.glb",
+  "name": "charloom_explicit_contact_probe",
+  "duration": 1.0333333015441895,
+  "fps": 30,
+  "layers": [{ "clip": "walk" }],
+  "contacts": [
+    { "joint": "LeftFoot", "chain_root": "LeftUpLeg", "start": 0.1, "end": 0.35 },
+    { "joint": "RightFoot", "chain_root": "RightUpLeg", "start": 0.6, "end": 0.85 }
+  ],
+  "solver": { "tolerance_m": 0.002, "iterations": 80 }
+}

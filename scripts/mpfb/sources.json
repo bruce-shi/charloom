@@ -1,0 +1,16 @@
+{
+  "mpfb": {
+    "revision": "6ff1eb358f6c1959ced77e79e6dd2406d9a71f49",
+    "version": "2.0.18",
+    "url": "https://codeload.github.com/makehumancommunity/mpfb2/zip/6ff1eb358f6c1959ced77e79e6dd2406d9a71f49",
+    "sha256": "066f83f98add0e11065296a5ffc10291f28677240008891becb20cc9a2b22766",
+    "source": "https://github.com/makehumancommunity/mpfb2",
+    "code_license": "GPL-3.0-or-later; see upstream LICENSE and per-file notices"
+  },
+  "system_assets": {
+    "url": "https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip",
+    "sha256": "b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107",
+    "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html",
+    "license": "CC0"
+  }
+}

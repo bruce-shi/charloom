@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""Stage changes from public main with a three-way merge against the last synced snapshot."""
+
+import argparse
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+from paths import public_path
+
+from common import (
+    ENV,
+    OVERLAYS,
+    PREFIX,
+    SOURCE,
+    config,
+    configured_destination,
+    files_at,
+    git,
+    locked_public,
+    regular_blob,
+    updated_tree,
+    write_json,
+)
+
+
+def merge(args):
+    dest = configured_destination()
+    branch = config(SOURCE, "charloom.publicBranch") or "mh-registration"
+    if git(SOURCE, "symbolic-ref", "--short", "HEAD").decode().strip() != branch:
+        raise ValueError(f"Switch to the configured private branch {branch}")
+    marker = Path(
+        git(
+            SOURCE,
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-path",
+            "charloom-public-merge.json",
+        )
+        .decode()
+        .strip()
+    )
+    if args.abort:
+        if marker.exists():
+            marker.unlink()
+        print("Merge tracking cleared. Working files and staged changes are preserved.")
+        return
+
+    with locked_public(dest):
+        if marker.exists():
+            raise ValueError(
+                "A public merge is pending. Resolve, stage and commit it, or use --abort."
+            )
+        if args.pull:
+            git(dest, "fetch", "--no-tags", "origin", "refs/heads/main")
+            try:
+                git(
+                    dest,
+                    "merge",
+                    "--no-edit",
+                    "--no-stat",
+                    "-m",
+                    "Integrate public changes",
+                    "FETCH_HEAD",
+                )
+            except subprocess.CalledProcessError:
+                raise ValueError(
+                    f"Git could not integrate origin/main in {dest}. Inspect git status there, resolve the public merge and rerun this command."
+                ) from None
+        state = json.loads((dest / ".git/source-sync.json").read_text())
+        base = state["base"]
+        tip = git(dest, "rev-parse", "HEAD").decode().strip()
+        head = git(SOURCE, "rev-parse", "HEAD").decode().strip()
+        if base == tip:
+            print("Public main is already integrated.")
+            return
+        git(dest, "merge-base", "--is-ancestor", base, tip)
+        if git(SOURCE, "ls-files", "--unmerged"):
+            raise ValueError("Resolve the current private merge first")
+        before, after = files_at(dest, base), files_at(dest, tip)
+        private = files_at(SOURCE, head)
+        allowfile = PREFIX + "files.txt"
+        mode, original = regular_blob(SOURCE, private[allowfile])
+        allow = set(original.decode().splitlines())
+        known = set(state["paths"])
+        old_tree, new_tree = {}, {}
+        for name in sorted(before.keys() | after.keys()):
+            if before.get(name) == after.get(name):
+                continue
+            if name not in known:
+                if not public_path(name, allow):
+                    print(f"Public-only file: {name}")
+                    continue
+                if name not in before and name in private:
+                    raise ValueError(
+                        f"New public path already exists privately: {name}"
+                    )
+            target = PREFIX + OVERLAYS[name] if name in OVERLAYS else name
+            old_tree[target] = (
+                regular_blob(dest, before[name]) if name in before else None
+            )
+            new_tree[target] = (
+                regular_blob(dest, after[name]) if name in after else None
+            )
+        paths = sorted(new_tree)
+        if paths and git(
+            SOURCE,
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+            "--ignored=matching",
+            "--",
+            *paths,
+        ):
+            raise ValueError(
+                "A public update touches a locally edited or untracked private path. Commit or stash that path first."
+            )
+        # Both synthetic commits use the same private parent/tree everywhere
+        # except the changed public paths, so private-only files never enter a diff.
+        base_tree = updated_tree(SOURCE, head, old_tree)
+        other_tree = updated_tree(SOURCE, head, new_tree)
+        synthetic_base = git(
+            SOURCE, "commit-tree", base_tree, "-m", "Public merge base"
+        ).strip()
+        other = git(
+            SOURCE,
+            "commit-tree",
+            other_tree,
+            "-p",
+            synthetic_base,
+            "-m",
+            "Public source changes",
+        ).strip()
+        result = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(SOURCE),
+                "merge-tree",
+                "--write-tree",
+                "-z",
+                "--merge-base=" + synthetic_base.decode(),
+                head,
+                other,
+            ],
+            env=ENV,
+            stdout=subprocess.PIPE,
+        )
+        if result.returncode not in (0, 1):
+            result.check_returncode()
+        tree, *rows = result.stdout.split(b"\0")
+        conflicts = []
+        for row in rows:
+            if not row:
+                break
+            fields, name = row.split(b"\t", 1)
+            conflicts.append((name, fields))
+        mentioned = {name for name, _ in conflicts}
+        if result.returncode and not mentioned:
+            raise ValueError("Git reported a merge conflict without file stages")
+        if args.check:
+            for name in paths:
+                print(name)
+            for name in sorted(mentioned):
+                print("Conflict:", name.decode())
+            return result.returncode
+        # Apply the delta to the existing index without touching unrelated WIP.
+        git(SOURCE, "read-tree", "-m", "-u", head, tree)
+        if conflicts:
+            entries = [b"0 " + b"0" * 40 + b"\t" + name for name in sorted(mentioned)]
+            entries.extend(fields + b"\t" + name for name, fields in conflicts)
+            git(
+                SOURCE,
+                "update-index",
+                "-z",
+                "--index-info",
+                data=b"\0".join(entries) + b"\0",
+            )
+        write_json(
+            marker, {"private": head, "public": tip, "base": base, "paths": paths}
+        )
+        if conflicts:
+            print(
+                "Resolve and stage conflicts, then commit the public merge:",
+                file=sys.stderr,
+            )
+            for name in sorted(mentioned):
+                print(" ", name.decode(), file=sys.stderr)
+            return 1
+        print("Public updates staged. Review git diff --cached, then commit.")
+        if tree == git(SOURCE, "rev-parse", "HEAD^{tree}").strip():
+            print(
+                "The private tree already contains the result. Use git commit --allow-empty to acknowledge it."
+            )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--pull",
+        action="store_true",
+        help="fetch and merge origin/main in the public checkout before importing",
+    )
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--check",
+        action="store_true",
+        help="preview paths and conflicts without staging",
+    )
+    group.add_argument(
+        "--abort",
+        action="store_true",
+        help="forget the pending import and keep local changes",
+    )
+    try:
+        sys.exit(merge(parser.parse_args()))
+    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+        parser.exit(1, f"Public merge: {error}\n")

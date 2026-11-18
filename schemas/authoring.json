@@ -1,0 +1,1052 @@
+{
+  "$defs": {
+    "AnatomyClass": {
+      "enum": [
+        "human",
+        "stylized_humanoid",
+        "nonhuman",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "AnatomyKind": {
+      "enum": [
+        "head",
+        "body",
+        "hand",
+        "foot",
+        "chain",
+        "appendage"
+      ],
+      "type": "string"
+    },
+    "AnatomyPart": {
+      "additionalProperties": false,
+      "properties": {
+        "confirmed": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/AnatomyKind"
+        },
+        "preserved_part_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "prior_form": {
+          "type": "string"
+        },
+        "source_form": {
+          "description": "Reviewed structural identity, e.g. human, cloven_hoof, six_limb_chain.",
+          "type": "string"
+        },
+        "strategy": {
+          "$ref": "#/$defs/AnatomyStrategy"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "source_form",
+        "prior_form",
+        "strategy",
+        "evidence",
+        "confirmed"
+      ],
+      "type": "object"
+    },
+    "AnatomyRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "preserved_part_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "prior_hash": {
+          "type": "string"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AnatomyReview"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_hash": {
+          "type": "string"
+        },
+        "usage": {
+          "$ref": "#/$defs/AnatomyUse"
+        }
+      },
+      "required": [
+        "source_hash",
+        "prior_hash",
+        "usage"
+      ],
+      "type": "object"
+    },
+    "AnatomyReview": {
+      "additionalProperties": false,
+      "properties": {
+        "anatomy_class": {
+          "$ref": "#/$defs/AnatomyClass"
+        },
+        "author": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/AnatomyPart"
+          },
+          "type": "array"
+        },
+        "prior_hash": {
+          "type": "string"
+        },
+        "source_hash": {
+          "type": "string"
+        },
+        "version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version",
+        "anatomy_class",
+        "source_hash",
+        "prior_hash",
+        "author",
+        "evidence",
+        "parts"
+      ],
+      "type": "object"
+    },
+    "AnatomyStrategy": {
+      "enum": [
+        "fit_prior",
+        "preserve_source",
+        "unresolved"
+      ],
+      "type": "string"
+    },
+    "AnatomyUse": {
+      "enum": [
+        "fit_body",
+        "reconstruct_body",
+        "complete_body",
+        "fit_face",
+        "mpfb_batch"
+      ],
+      "type": "string"
+    },
+    "Annotation": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "source_xz": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "source_y": {
+          "default": null,
+          "description": "Optional reviewed Blender Y coordinate (meters).\nTogether with source_xz this is a complete Blender Z-up point.",
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "template_vertex": {
+          "default": null,
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "template_xz": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "weight": {
+          "default": 1.0,
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "template_xz",
+        "source_xz"
+      ],
+      "type": "object"
+    },
+    "CageBinding": {
+      "properties": {
+        "cage": {
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "type": "array"
+        },
+        "vertex": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "weights": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "type": "array"
+        }
+      },
+      "required": [
+        "vertex",
+        "cage",
+        "weights"
+      ],
+      "type": "object"
+    },
+    "Evidence": {
+      "enum": [
+        "unknown",
+        "skin",
+        "clothing"
+      ],
+      "type": "string"
+    },
+    "FaceRegions": {
+      "properties": {
+        "bindings": {
+          "items": {
+            "$ref": "#/$defs/CageBinding"
+          },
+          "type": "array"
+        },
+        "cavities": {
+          "items": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "outer": {
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "scalp_preserve": {
+          "default": [],
+          "description": "Authored pinnae transported rigidly with the skull, excluded from face/hair projection.",
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "unbound": {
+          "default": [],
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "outer",
+        "cavities"
+      ],
+      "type": "object"
+    },
+    "Guidance": {
+      "additionalProperties": false,
+      "properties": {
+        "anatomy": {
+          "additionalProperties": false,
+          "default": null,
+          "properties": {
+            "anatomy_class": {
+              "$ref": "#/$defs/AnatomyClass"
+            },
+            "author": {
+              "type": "string"
+            },
+            "evidence": {
+              "type": "string"
+            },
+            "parts": {
+              "items": {
+                "$ref": "#/$defs/AnatomyPart"
+              },
+              "type": "array"
+            },
+            "prior_hash": {
+              "type": "string"
+            },
+            "source_hash": {
+              "type": "string"
+            },
+            "version": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "anatomy_class",
+            "source_hash",
+            "prior_hash",
+            "author",
+            "evidence",
+            "parts"
+          ],
+          "type": "object"
+        },
+        "author": {
+          "type": "string"
+        },
+        "confirmed_landmarks": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "coordinate_system": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "landmarks": {
+          "items": {
+            "$ref": "#/$defs/Landmark"
+          },
+          "type": "array"
+        },
+        "preserve_vertices": {
+          "default": [],
+          "description": "Reviewed geometry that a later body fit must keep exactly (e.g. a fitted face).",
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "prior_hash": {
+          "type": "string"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/Region"
+          },
+          "type": "array"
+        },
+        "source_hash": {
+          "type": "string"
+        },
+        "version": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "format",
+        "version",
+        "coordinate_system",
+        "prior_hash",
+        "source_hash",
+        "author",
+        "landmarks",
+        "confirmed_landmarks",
+        "regions"
+      ],
+      "type": "object"
+    },
+    "Input": {
+      "additionalProperties": false,
+      "properties": {
+        "guidance": {
+          "$ref": "#/$defs/Guidance"
+        },
+        "mesh": {
+          "$ref": "#/$defs/MeshData"
+        },
+        "source": {
+          "$ref": "#/$defs/MeshData"
+        }
+      },
+      "required": [
+        "mesh",
+        "source",
+        "guidance"
+      ],
+      "type": "object"
+    },
+    "Input2": {
+      "properties": {
+        "anatomy": {
+          "additionalProperties": false,
+          "default": null,
+          "properties": {
+            "anatomy_class": {
+              "$ref": "#/$defs/AnatomyClass"
+            },
+            "author": {
+              "type": "string"
+            },
+            "evidence": {
+              "type": "string"
+            },
+            "parts": {
+              "items": {
+                "$ref": "#/$defs/AnatomyPart"
+              },
+              "type": "array"
+            },
+            "prior_hash": {
+              "type": "string"
+            },
+            "source_hash": {
+              "type": "string"
+            },
+            "version": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "version",
+            "anatomy_class",
+            "source_hash",
+            "prior_hash",
+            "author",
+            "evidence",
+            "parts"
+          ],
+          "type": "object"
+        },
+        "body_fit": {
+          "items": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "body_ids": {
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "face_regions": {
+          "$ref": "#/$defs/FaceRegions"
+        },
+        "groups": {
+          "additionalProperties": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        "hair_triangles": {
+          "default": [],
+          "items": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "landmark_triangles": {
+          "items": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "morphs": {
+          "items": {
+            "$ref": "#/$defs/Morph"
+          },
+          "type": "array"
+        },
+        "neck_girth": {
+          "$ref": "#/$defs/NeckGirth"
+        },
+        "source": {
+          "items": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "source_triangles": {
+          "items": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "template": {
+          "items": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "triangles": {
+          "items": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "template",
+        "body_fit",
+        "triangles",
+        "body_ids",
+        "source",
+        "source_triangles",
+        "landmark_triangles",
+        "morphs",
+        "groups"
+      ],
+      "type": "object"
+    },
+    "Landmark": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "prior": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "strength": {
+          "default": 1.0,
+          "format": "double",
+          "type": "number"
+        },
+        "target": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "prior",
+        "target"
+      ],
+      "type": "object"
+    },
+    "MeshData": {
+      "additionalProperties": false,
+      "properties": {
+        "materials": {
+          "default": [],
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "triangles": {
+          "items": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "uv": {
+          "default": [],
+          "items": {
+            "items": {
+              "format": "float",
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "vertices": {
+          "items": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "vertices",
+        "triangles"
+      ],
+      "type": "object"
+    },
+    "Morph": {
+      "properties": {
+        "deltas": {
+          "items": {
+            "maxItems": 4,
+            "minItems": 4,
+            "prefixItems": [
+              {
+                "format": "uint",
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "format": "double",
+                "type": "number"
+              },
+              {
+                "format": "double",
+                "type": "number"
+              },
+              {
+                "format": "double",
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "deltas"
+      ],
+      "type": "object"
+    },
+    "NeckGirth": {
+      "properties": {
+        "depth_scale": {
+          "default": 1.0,
+          "format": "double",
+          "type": "number"
+        },
+        "width_scale": {
+          "default": 1.0,
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "Region": {
+      "additionalProperties": false,
+      "properties": {
+        "air_gap_mm": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "axis": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Evidence"
+        },
+        "id": {
+          "type": "string"
+        },
+        "material_thickness_mm": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "maximum_distance_m": {
+          "description": "Explicit surface-capture limit, not a global nearest-point fallback.",
+          "format": "double",
+          "type": "number"
+        },
+        "radial_scale": {
+          "description": "Authored radial build; one preserves the current anatomy prior.",
+          "format": "double",
+          "type": "number"
+        },
+        "source_triangles": {
+          "default": [],
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "vertices": {
+          "description": "Exact template vertex IDs. Domains never use nearest source object names.",
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "axis",
+        "vertices",
+        "evidence",
+        "radial_scale",
+        "material_thickness_mm",
+        "air_gap_mm",
+        "maximum_distance_m"
+      ],
+      "type": "object"
+    },
+    "Request": {
+      "properties": {
+        "fitted": {
+          "items": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "occlusion_triangles": {
+          "default": [],
+          "items": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "outer_vertices": {
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "reference": {
+          "items": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "source": {
+          "items": {
+            "items": {
+              "format": "double",
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "source_triangles": {
+          "items": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "triangles": {
+          "items": {
+            "items": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "unobserved_vertices": {
+          "default": [],
+          "items": {
+            "format": "uint",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "reference",
+        "fitted",
+        "triangles",
+        "outer_vertices",
+        "source",
+        "source_triangles"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "properties": {
+        "input": {
+          "$ref": "#/$defs/AnatomyRequest"
+        },
+        "operation": {
+          "const": "anatomy_preflight",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation",
+        "input"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "input": {
+          "$ref": "#/$defs/Input"
+        },
+        "operation": {
+          "const": "fit_body",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation",
+        "input"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "annotations": {
+          "items": {
+            "$ref": "#/$defs/Annotation"
+          },
+          "type": "array"
+        },
+        "input": {
+          "$ref": "#/$defs/Input2"
+        },
+        "operation": {
+          "const": "fit_face",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation",
+        "input",
+        "annotations"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "input": {
+          "$ref": "#/$defs/Request"
+        },
+        "operation": {
+          "const": "compare_face",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation",
+        "input"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "input": true,
+        "operation": {
+          "const": "mesh",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation",
+        "input"
+      ],
+      "type": "object"
+    }
+  ],
+  "properties": {
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version"
+  ],
+  "title": "Request",
+  "type": "object"
+}

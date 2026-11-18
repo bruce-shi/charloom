@@ -1,0 +1,6 @@
+interface:
+  display_name: "Charloom MakeHuman transfer"
+  short_description: "Measure, rig and verify a dressable character from its scan"
+  default_prompt: "Use $charloom-mh to turn this generated character GLB into a MakeHuman-rigged character with separate clothing."
+policy:
+  allow_implicit_invocation: true

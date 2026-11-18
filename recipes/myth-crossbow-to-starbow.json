@@ -1,0 +1,23 @@
+{
+  "schema_version": "0.1",
+  "asset": "../fixtures/local-myth/starbow-adept.glb",
+  "name": "charloom_walk_with_hand_layer",
+  "duration": 1.0333333015441895,
+  "fps": 30,
+  "layers": [
+    {
+      "source": "../fixtures/local-myth/crossbow-guard.glb",
+      "clip": "walk",
+      "retarget": { "min_target_coverage": 0.8 }
+    },
+    {
+      "clip": "idle",
+      "source_start": 0,
+      "source_end": 1.0333333015441895,
+      "weight": 0.65,
+      "fade_in": 0.12,
+      "fade_out": 0.12,
+      "joints": ["RightHand", "RightHandIndex1", "RightHandIndex2", "RightHandIndex3", "RightHandMiddle1", "RightHandMiddle2", "RightHandMiddle3", "RightHandPinky1", "RightHandPinky2", "RightHandPinky3", "RightHandRing1", "RightHandRing2", "RightHandRing3", "RightHandThumb1", "RightHandThumb2", "RightHandThumb3"]
+    }
+  ]
+}

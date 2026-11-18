@@ -1,0 +1,5 @@
+{
+  "fps": 30,
+  "min_target_coverage": 0.8,
+  "align_reference_chains": true
+}

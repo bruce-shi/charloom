@@ -1,0 +1,6 @@
+interface:
+  display_name: "Charloom"
+  short_description: "Build, rig and animate scanned characters with Blender Python"
+  default_prompt: "Use $charloom to build an editable character in Blender and review its exported animation in the Gallery."
+policy:
+  allow_implicit_invocation: true
