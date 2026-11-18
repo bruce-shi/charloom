@@ -36,7 +36,7 @@ The default matrix applies to the entire item; for local inner walls or cuffs, u
 
 Outputs include editable `character.blend`, `character.glb` and `garments.json` with provenance. The script rejects a direct transform when the garment has morph targets. Inspect them and apply the corresponding edit in Blender. Check collisions and review the garment after the edit.
 
-## Complete actions and interlaced sequences
+## Check intersections over the full motion
 
 ```sh
 "$PY" scripts/skin.py analyze "$DRESSED" > "$REVIEW/skin-analysis.json"
