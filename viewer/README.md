@@ -1,5 +1,7 @@
 # Charloom Gallery
 
+English · [简体中文](README.zh-CN.md)
+
 The local Gallery displays registered character results, compares the original scan with bare and dressed exports, and plays their animation clips. Open the session URL printed by Vite. Direct character links support refresh and browser navigation.
 
 ```sh

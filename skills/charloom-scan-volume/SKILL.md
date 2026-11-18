@@ -1,9 +1,11 @@
 ---
 name: charloom-scan-volume
-description: 用 Charloom 原扫描中独立的躯干和四肢壳体构建 scan-volume 裸模。适用于已确认五个可分离皮肤壳体的角色。
+description: "Build a bare body from separate torso and limb shells in a Charloom scan. Use this route when the source contains five verified, separable skin shells."
 ---
 
 # Scan-volume body
+
+English · [简体中文](SKILL.zh-CN.md)
 
 Use this opt-in assembly with an observed volume head from the same scan. The
 builder combines the torso and limbs into one solid and joins it to the head

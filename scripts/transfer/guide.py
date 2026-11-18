@@ -2,8 +2,10 @@
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import time
+from urllib.parse import quote
 
 import numpy as np
 from numba import njit
@@ -151,7 +153,14 @@ def prepare(scan, out):
     from shutil import copyfile
 
     root = Path(__file__).resolve().parents[2]
-    copyfile(root / "docs/scan-annotation.md", out / "INSTRUCTIONS.md")
+    # The output may be outside the checkout or reached through a symlink.
+    skills_path = quote(Path(os.path.relpath(root / "skills", out.resolve())).as_posix())
+    for suffix in (".md", ".zh-CN.md"):
+        source = root / "docs" / ("scan-annotation" + suffix)
+        instructions = source.read_text(encoding="utf-8")
+        instructions = instructions.replace("](../skills/", "](" + skills_path + "/")
+        instructions = instructions.replace("](scan-annotation.", "](INSTRUCTIONS.")
+        (out / ("INSTRUCTIONS" + suffix)).write_text(instructions, encoding="utf-8")
     copyfile(root / "schemas/guidance.json", out / "guidance.schema.json")
     views = dict(
         schema="charloom-mh-guidance-v1",

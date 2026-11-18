@@ -1,6 +1,6 @@
 # Charloom
 
-English · [简体中文](README.zh-CN.md)
+English · [简体中文](README.zh-CN.md) · [Documentation index](docs/README.md)
 
 Charloom turns textured scans into editable Blender characters. Fit a MakeHuman body, bind the original scanned head and clothing, then add motion to the character’s existing rig. The Blender extension provides the editing panel. The agent skills guide scanning, fitting, animation and review.
 

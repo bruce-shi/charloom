@@ -1,5 +1,7 @@
 # Diagnose an upper-body defect on a new scan
 
+English · [简体中文](chest-and-arms.zh-CN.md)
+
 Open the delivered bare GLB and the original scan at the same scale and pose. Reproduce the reported angle, then orbit the shoulder, nape and underside of the jaw. In Blender, isolate the body, head, hair and garments one at a time. If surfaces share an object, isolate their faces in Edit Mode. Compare textured and neutral-material views. A defect visible in neutral material needs a geometry, normal or binding check. A band visible only with materials needs an atlas and shading check. Compare rest with the pose that exposes the defect.
 
 ## Start from the intact body fit

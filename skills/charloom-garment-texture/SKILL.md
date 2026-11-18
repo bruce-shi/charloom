@@ -1,13 +1,15 @@
 ---
 name: charloom-garment-texture
-description: 修复 Charloom 服装的图案错位、拉伸、黑色三角面和遮挡区缺纹理，保留可见原扫描的 UV 与材质。
+description: "Restore garment patterns, stretched UVs, dark triangles and missing texture in covered regions while preserving visible scan UVs and materials."
 ---
 
-# 修复衣物纹理
+# Fixing clothing textures
 
-1. 同一视角比较原扫描、纯衣服与穿衣版。切到中性材质，隔离外层、内衬及相邻头发。先确定缺面、露背面、层间穿插、UV 错位或贴图缺失中的实际来源。
-2. 原扫描看得见的链环、皮边、带扣和接缝使用原三角面及其 UV 插值。邻接衣层用连续的局部变形和相容权重，检查静止与动作时图案的尺度和接缝。
-3. **局部 image edit 可选。** 当头发等遮住原材质、确实缺少可用像素时，用邻近同种织物及接缝作参考，在遮挡掩模内补齐，烘焙回连续 UV 并保留边缘填充。保存源投影、掩模、补图及实际覆盖区域。
-4. 近看原问题角度、空衣领背面与运动中的肩部。对比重复纹理和边缘，记录哪部分来自扫描、哪部分是补绘。[面板、UV 与贴图烘焙检查](references/panel-uv.md)
+English · [简体中文](SKILL.zh-CN.md)
 
-圆筒形衣领/护具的原扫描投影及已审阅图集写回使用[投影与图集命令](references/texture-commands.md)。`cylinder_chart.py` 保存原面和重心坐标证据，`apply_atlas.py` 只为明确选定的 primitive 写新图集，保留几何、UV 和其余材质参数。新面板先在 Blender 建立连续 UV；没有对应 UV 时不能直接套图。
+1. Compare the original scan from the same perspective with the pure clothing and dressed versions. Cut to a neutral material, separating the outer layer, inner lining, and adjacent hair. First, determine the actual sources of missing faces, exposed backfaces, interlayer intersections, UV misalignment, or missing textures.
+2. The visible chains, edges, buttons, and seams in the original scan are represented using the original triangular faces and their UV interpolations. Adjacent layers are handled with continuous local deformation and compatible weights, ensuring that the scale and seams of the pattern remain consistent between static and dynamic states.
+3. **Optional local image editing.** When hair and other elements cover the original material, or when there is a lack of available pixels, use adjacent similar fabrics and seams as references to fill in the missing areas within the masking mask. Re-bake the result into continuous UV maps and retain the edge fill. Save the source projection, mask, replacement image, and the actual covered area.
+4. From the perspective of the original problem, compare the back of the open collar with the shoulders during movement. Contrast the repeated textures and edges, and note which parts are from scanning, and which parts are supplementary. [Panel, UV and Mapping Baking Check](references/panel-uv.md)
+
+The original scan projection and reviewed atlas for the cylindrical collar/protective device are reused[Projection and atlas commands](references/texture-commands.md).`cylinder_chart.py` The original plane and centroid coordinates are preserved`apply_atlas.py`. Only the explicitly selected primitives have new atlases created, while the geometry, UV mapping, and other material parameters remain unchanged. The new atlases are first generated in Blender with continuous UV mapping; if there is no corresponding UV mapping, the image cannot be directly applied.

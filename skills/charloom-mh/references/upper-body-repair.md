@@ -1,5 +1,7 @@
 # Diagnose an upper-body defect on a new scan
 
+English · [简体中文](upper-body-repair.zh-CN.md)
+
 [Diagnose an upper-body defect on a new scan](../../charloom-body-fit/SKILL.md)
 
 ## Start from the intact body fit

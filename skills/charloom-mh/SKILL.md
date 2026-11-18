@@ -1,136 +1,138 @@
 ---
 name: charloom-mh
-description: Charloom 扫描角色制作的主流程和技能索引。从原扫描构建可换装、可动画的 MakeHuman 角色，或定位已有角色需要重做的步骤。
+description: "Build an animated, dressable MakeHuman character from a scan. Follow the complete Charloom workflow or find the stage to repeat for an existing character."
 ---
 
-# 从原扫描制作可换装、可动画角色
+# Build an animated character with interchangeable clothing from a scan
 
-主流程规定依赖顺序和每步完成条件，小 skill 提供该步的操作细节。新角色从第 0 步执行；局部修复先确认 Gallery 实际加载的文件、源扫描和问题帧，再重做受影响步骤及下游验证。已有资料只有在源文件、相机、姿势、尺度与本次输入一致时才能复用。
+English · [简体中文](SKILL.zh-CN.md)
 
-默认身体路线是：原扫描标定 → 遮挡区配准参考 → 身体量体 → MakeHuman 身体拟合及复测。头部路线是保留原扫描头、五官表面、UV 和贴图，在原表面绑定眼睑和嘴唇，再与身体接合。MakeHuman 提供身体拓扑。角色第一次绑定时确定一套固定骨架，记录骨名、层级、静止姿态、绑定矩阵和网格权重。先查角色已登记的绑定；已有绑定的角色始终沿用它。已有角色只追加动作时，从登记的裸身和穿衣成品开始。新动作映射到原骨架，并核对发束、衣摆或道具等角色专属骨链。[固定骨架与追加动作](../charloom/references/walk-replay.md#在同一角色骨架上增加动作)。
+Follow the stages in order. Each linked skill gives the procedure and the evidence needed to complete its stage. For a new character, start at step 0. For a repair, identify the file actually loaded in the Gallery, its source scan and the problem frame, then rerun the affected stages and downstream checks. Reuse earlier evidence only when the source, camera, pose and scale match.
 
-## 0. 确认输入、交付范围和环境
+Calibrate the original scan, register references for occluded anatomy, measure the body, fit the MakeHuman body and remeasure. MakeHuman supplies the body topology. Preserve the scan’s head geometry, facial surfaces, UVs and textures. Bind lids and lips directly on that surface and join the head to the body. At the first rigging, record the bone names, hierarchy, rest transforms, bind matrices and skin weights. Check for a registered binding first and reuse it when present. To add motion, begin with the registered bare and dressed exports. Map the new clip to their rig, including character-specific chains for hair, garments and props. [Keep the rig fixed when adding motion](../charloom/references/walk-replay.md#add-motion-to-the-existing-character-rig)
 
-按[环境与输入准备](../charloom/references/setup.md)安装 CV Python、Bun、Blender；将 `PY` 指向该 CV 环境，并导出 `CHARLOOM_CV_PYTHON="$PY"`，使 Bun 调用的 Python 使用同一组依赖。
+## 0. Confirm inputs, deliverables and environment
 
-1. 找到任务指定的原始扫描 GLB，记录来源、绝对路径、文件 SHA-256、网格与材质结构。检查是否带蒙皮、动画、多 primitive 或多个贴图图集。需要预处理时保留原文件，记录静态化、合并或图集转换；guide 绑定实际送入流水线的静态文件。
-2. 确认所需交付：裸模、穿衣版、可编辑 Blender 场景、动作以及是否登记 Gallery。完整角色制作包含原头保留、身体量体与复测；面部动作、装备和服装按角色及任务要求执行。
-3. 生成适合角色的 MakeHuman 模板，记录所选体型参数与模板路径。复现已有步行时，按[步行动作溯源与复跑](../charloom/references/walk-replay.md)确认原动作、骨架、绑定入口和局部关键帧修正。在分派任务前核对提供的输入与原构建收据。新角色先选项目指定的角色骨架，再选动作素材；动作文件中的骨架只负责解释该动作。模板体型是初值，不能作为角色已经测量的证据。
-4. 为本次 guide、测量、transfer、build 和 review 设置输出目录。保留阶段输入与报告，修订构建使用新目录，避免覆盖正在对比的版本。
+Install CV Python, Bun, and Blender according to [Environment and Input Preparation](../charloom/references/setup.md). Point `PY` towards this CV environment and export `CHARLOOM_CV_PYTHON="$PY"`, ensuring that the Python used by Bun has the same set of dependencies.
 
-设置本轮绝对路径变量：`SCAN`、`PRIOR`、`MOTION` 指向输入文件，`GUIDE`、`MEASURE`、`PARTS`、`TRANSFER`、`BUILD_PARENT`、`BLENDER_OUT` 指向本轮目录。`TRANSFER` 末级名称作为 `NAME`；输出目录不要重复使用。`MEASURE` 可以先创建，其各命令输出子目录保持不存在。后续命令均从仓库根目录执行。
+1. Locate the task’s original scan GLB and record its provenance, absolute path, SHA-256, mesh structure and materials. Check for skinning, animation, multiple primitives or texture atlases. When preparing a static, merged or re-atlased copy, retain the original and record the conversion. Bind the guide to the exact static file used by the pipeline.
+2. Confirm which outputs are needed: bare and dressed models, an editable Blender scene, motion clips and a Gallery entry. A full character build preserves the original head and includes body measurements before and after fitting. Include facial motion, equipment and clothing as requested for the character.
+3. Generate a suitable MakeHuman template and record the body parameters and path. To reproduce an existing walk, use [Step Action Tracing and Re-run](../charloom/references/walk-replay.md) to identify the original motion, rig, binding entry point and local keyframe corrections. Before delegating, compare the supplied inputs with the original build records. For a new character, select its designated rig before choosing motion material. The motion file’s rig describes the source clip. The template’s dimensions are only starting values for fitting.
+4. Set up output directories for this guide, measurement, transfer, build, and review. Keep the stage input and report, and use a new directory for the revised build to avoid overwriting the version being compared.
 
-**完成条件：** 实际原扫描、模板、动作和环境可读取；明确本次要走的身体、原头和服装路线。缺原扫描就停在输入准备，不用模板或合成角色替代原扫描完成交付验证。
+Use absolute paths. Point `SCAN`, `PRIOR` and `MOTION` to the input files, and `GUIDE`, `MEASURE`, `PARTS`, `TRANSFER`, `BUILD_PARENT` and `BLENDER_OUT` to this run’s directories. The last component of `TRANSFER` is `NAME`. Use fresh output directories. You can create `MEASURE` in advance, leaving each command’s output subdirectory absent. Run the remaining commands from the repository root.
 
-## 1. 标定原扫描并识别表面结构
+**Completion Requirements:** The actual original scan, template, actions, and environment must be readable; the body, head, and clothing routes to be followed are clearly defined. If the original scan is missing, the project will stop at the input preparation stage. There is no need to use a template or synthesized character to replace the original scan for completion verification.
 
-使用[扫描标定](../charloom-scan-guide/SKILL.md)。生成正、侧、后视图和必要的特写；在角色自身的坐标系区分解剖左右，标出肩、肘、腕、掌、髋、膝、踝、颈根及头部标记。核对镜头、像素尺度和视图朝向。
+## 1. Calibrate the original scan and identify surface structures
 
-原头需要单独检查连接组件及贴图：区分面部皮肤、开放眼部薄片、真实独立眼球、睫毛、眉毛、头发和口腔碎面。在标定图上描实际唇缝和上下眼睑边界。开放眼部薄片不能直接作为球形眼球处理。
+Follow [Scanning Calibration](../charloom-scan-guide/SKILL.md). Render front, side and rear views and detail views as needed. Mark shoulders, elbows, wrists, palms, hips, knees, ankles, neck base and head using the character’s own left and right. Verify the camera, pixel scale and view direction.
+
+The original text requires separate checks for connection components and textures: distinguishing facial skin, open eye patches, real independent eyeballs, eyelashes, eyebrows, hair, and oral surface fragments. On the calibration map, mark the actual lip seams and the boundaries of the upper and lower eyelids. The open eye patches cannot be treated as spherical eyeballs.
 
 ```sh
 "$PY" scripts/scan-guide.py "$SCAN" --out "$GUIDE"
 cp "$GUIDE/guidance.template.json" "$GUIDE/guidance.json"
 ```
 
-按扫描标定 skill 编辑新 guide 的标记，细化相机并保存唇线后，再执行：
+After editing the new guide's tags based on the scan calibration skill, refining the camera settings, and saving the lip lines, proceed with the following:
 
 ```sh
 "$PY" scripts/scan-guide.py "$SCAN" --check "$GUIDE/guidance.json"
 ```
 
-执行 guide 的 `--check`，并目检标记落点。此命令检查哈希并解析标注，不代表身体已经量体，也不能替代标记叠图和分件隔离图的检查。
+Execute the command `--check` to visually inspect the marker placement. This command checks the hash and parses the annotations, but it does not represent the actual body measurement, nor can it replace the inspection of the marker overlay diagram and the separation diagram of parts.
 
-**交付物：** 与源哈希匹配的 `guidance.json`、相机数据、标记证据图，以及原头构建所需的唇线和眼部标记。文件 SHA-256 与工具生成的 `source_hash` 分别保留，不混用。
+**Deliverables:** A `guidance.json` that matches the source hash, camera data, a diagram of the markers, as well as the lips and eye markers required for the original head construction. The file SHA-256 and the `source_hash` generated by the tool are kept separate and not mixed together.
 
-**完成条件：** 标点确实落在对应解剖部位；可见皮肤、衣物外表面和遮挡部位已区分。视图、左右侧或源哈希不一致时先修正标定。
+**Completion check.** Verify that each landmark lies on its anatomical feature. Distinguish visible skin, the outer garment surface and occluded anatomy. Correct the calibration if the view, side or source hash disagrees.
 
-## 2. 为遮挡身体取得配准量体参考
+## 2. Register measurement references for occluded anatomy
 
-使用[身体量体](../charloom-body-measure/SKILL.md)。可见皮肤直接测原扫描；衣甲遮挡了要制作的裸身时，配准的紧身衣参考是本路线的必需输入。已有有效参考可复用；没有就按该 skill 生成同一角色、姿势和相机的参考，再做配准。图片服务只在需要生成或编辑参考时使用，其依赖见[图片服务准备](../charloom/references/setup.md#图片服务依赖)。
+Follow [Body measurement](../charloom-body-measure/SKILL.md). Measure exposed skin on the original scan. For a bare body hidden by clothing or armour this route requires a registered bodysuit reference. Reuse a valid reference, or generate and register one with the same character, pose and camera. Image-service dependencies apply when generating or editing a reference. See [Image service preparation](../charloom/references/setup.md#image-service-requirements).
 
-按[生成、配准与标记量体图](../charloom-body-measure/references/measurement-plates.md)制作正侧参考。侧面量躯干时，手掌竖直贴大腿外侧，指尖朝下，小腹前缘完整可见。遮挡时用同一相机另生成此姿势的侧图，配准后只更新可见的躯干测点。
+Follow [Generate, register and mark measurement references](../charloom-body-measure/references/measurement-plates.md) to prepare front and side references. For the torso profile, place the palm vertically against the outer thigh, fingertips down, with the lower abdomen’s front edge fully visible. If occluded, generate a separate view in that pose with the same camera. After registration, update only visible torso observations.
 
-逐视图检查头、手、脚、朝向、解剖高度及轮廓对应关系。读取 `views/bodysuit.json` 的接受状态、尺度、位移、锚点和覆盖区域；同时检查实际图像，不能仅凭 `accepted` 为真就通过。局部手脚或身体比例被生成图改变时，修正该区域的参考或排除不可靠数据。
+Check the correspondence between the head, hands, feet, orientation, anatomical height, and contours for each view. Read the acceptance status, scale, displacement, anchor points, and coverage area of `views/bodysuit.json`; also examine the actual images. Do not approve just because `accepted` is considered true. When the local proportions of hands, feet, or the body are changed by the generation diagram, correct the reference data for that area or exclude unreliable data.
 
 ```sh
 "$PY" scripts/mh-bodysuit.py "$GUIDE" --edit
 "$PY" scripts/mh-suit-contours.py "$GUIDE"
 ```
 
-第一条读取原标定图并生成、配准紧身衣量体参考；检查生成收据、实际正侧参考和密集端点后才运行第二条。已有相同源和相机的有效缓存时复用缓存，不重复提交付费任务。
+First, read the original calibration map and generate a reference for the tight-fitting garment's size; check the generated reference, actual left/right reference, and dense endpoints before proceeding to the second step. If there is an effective cache with the same source and camera, reuse the cache to avoid duplicate submission of the paid task.
 
-从通过检查的参考提取轮廓，保存选用的 `suit_contours.json` 或 ensemble 文件及生成收据。自动采样的轮廓、行宽和比例只是量体输入，下一步仍须建立逐部位的目标数值与测量路径。
+Extract the contours from the checked references, save the selected `suit_contours.json` or ensemble files, and generate receipts. The automatically sampled contours, line width, and scale are only the input for the mass unit. The next step is to establish the target values and measurement paths for each part.
 
-**完成条件：** 所需正侧视图已配准，覆盖本次要估计的身体区域；生成参考中的隐蔽人体形状明确标为估计。参考缺失或失配时，不进入裸模拟合。
+**Completion check.** The required front and side views are registered and cover the body regions being estimated. Mark occluded anatomy inferred from generated references as estimates. Resolve missing or mismatched references before fitting the bare body.
 
-## 3. 先量体并保存目标，再开始拟合
+## 3. Measure and save target dimensions before fitting
 
-执行[测点、路径和导出复测方法](../charloom-body-measure/references/surface-measurements.md)。这一阶段的目标来自原扫描和已配准参考，必须在第一次身体拟合之前保存，不能从拟合结果反推目标。
+[Measurement points, paths, and export measurement methods](../charloom-body-measure/references/surface-measurements.md). The targets for this stage are derived from the original scan and the aligned reference. They must be saved before the first body fit, and cannot be inferred from the fit results.
 
-具体输入按[量体脚本输入](../charloom-body-measure/references/script-inputs.md)填写。先运行坐标和密集点命令：
+Please fill in the input according to the format [Body script input](../charloom-body-measure/references/script-inputs.md). Run the "coordinate" and "densities" commands first:
 
 ```sh
 "$PY" skills/charloom-body-measure/scripts/working_frame.py "$SCAN" --prior "$PRIOR" --guide "$GUIDE" --out "$MEASURE/frame.json"
 "$PY" skills/charloom-body-measure/scripts/outline_points.py "$GUIDE" --frame "$MEASURE/frame.json" --out "$MEASURE/outline"
 ```
 
-然后用经分件确认的可见皮肤面、已配准人体 mask 和双视图解剖中心构成 `tape-spec.json`，运行：
+Then, using the visibly skinned face confirmed by the segmentation, the aligned human mask, and the dual-view anatomical center, create the `tape-spec.json`:
 
 ```sh
 "$PY" skills/charloom-body-measure/scripts/surface_tape.py "$MEASURE/tape-spec.json" --out "$MEASURE/tape-reference"
 ```
 
-需先取得皮肤分件范围时，先执行第 4 步，它不依赖身体拟合。路径规格应覆盖双侧外臂、外腿及腋下大臂内侧六条路径；检查分段长度和实际叠图。截面目标使用相同局部三维轴的图像投影，定义留在 `sections-spec.json`，先输出目标数值与端点图，再在第 5 步与真实网格截面比较。
+To obtain the skin segmenting range, perform step 4 first, as it does not depend on body fitting. The path specifications should cover the bilateral outer arms, outer legs, and the six paths inside the inner side of the armpit. Check the segment length and the actual overlay. The cross-section targets use the image projection of the same local three-dimensional axes, defined to remain in `sections-spec.json`. First, output the target values and the endpoint map, and then compare with the actual grid cross-section in step 5.
 
 ```sh
 "$PY" skills/charloom-body-measure/scripts/mesh_sections.py "$MEASURE/sections-spec.json" --out "$MEASURE/sections-reference"
 ```
 
-### 固定尺度和证据来源
+### Fixed dimensions and sources of evidence
 
-记录原扫描单位、相机像素尺度、源坐标到工作坐标的矩阵及尺度来源。当前 `Scan.working_frame(prior, front_view)` 按模板身体高度缩放扫描包围盒，可在运行 transfer 前单独计算；换模板或变更缩放后必须重新换算测量值。检查头饰、鞋底等是否改变包围盒高度。没有已知现实身高时，毫米表示工作模型的尺度，不冒称真实人体的物理尺寸。
+Record scan units, camera pixel scale, the source-to-working transform and the scale reference. The current `Scan.working_frame(prior, front_view)` scales the scan bounding box to the template body height. Compute this before transfer and convert measurements again if the template or scale changes. Check whether headwear or shoe soles affect the bounding box. Without a known real height, report millimetres in working-model space.
 
-每个目标项保留名称、左右侧、姿态、测点或路径、数值、单位、来源图/三角面及误差范围。证据分为：原扫描可见皮肤三维实测、衣物外表面实测、参考图二维投影测量、基于配准视图的隐藏身体估计。衣甲外壳不能记成裸身皮肤；单个视图不能宣称获得了完整三维表面路径。
+Each target item includes a name, left/right side, pose, measurement point or path, value, unit, reference image/three-dimensional surface, and error range. Evidence is categorized into: actual three-dimensional skin measurement from original scans, actual measurement of outer clothing surfaces, two-dimensional projection measurements from reference images, and hidden body estimation based on registration views. The outer shell of armor should not be considered as bare skin; individual views cannot claim to have a complete three-dimensional surface path.
 
-### 必需的量体项目
+### Required components
 
-| 部位 | 需要记录的目标 |
+| Parts | Targets to be recorded |
 | --- | --- |
-| 左右臂 | 肩尖—外肘—外腕的表面路径及分段长度；**腋窝下缘—肘内侧的大臂内侧沿体长度**单独测，左右各一条，不用肩肘骨长代替；肩肘腕关节链长另列；腕到可见指尖长度、肩到指尖垂直落差、手掌宽厚和方向。 |
-| 左右腿与脚 | 侧髋—外膝—外踝的表面路径及分段长度；髋膝踝关节链长另列；髋到脚底高度、脚长、脚宽及朝向。 |
-| 躯干和颈部 | 肩到髋的长度，肩宽，胸、下肋、腹、腰、髋和颈根的截面位置、中心、宽与深；同高度的左右臂腰间隙。 |
-| 肢体局部截面 | 左右上臂、肘、前臂、腕、大腿、膝、小腿、踝的截面位置、中心、宽与深。截面垂直局部肢体轴，不能用画面水平宽度冒充。 |
+| Left and right arms | Surface path and segment length from shoulder tip to outer elbow to outer wrist; length of the inner arm along the inner side of the armpit's lower edge to the inner side of the elbow, measured separately on both sides, without using the length of the shoulder and elbow bones as a substitute; the chain length of the shoulder-elbow-wrist joint is listed separately; length from the wrist to the visible fingertips, vertical distance from the shoulder to the fingertips, width and direction of the palm. |
+| Left and right legs and feet | Surface paths and segmented lengths for the hip, knee, and ankle; additional list of hip-knee-ankle joint chain lengths; height from hip to the sole of the foot, foot length, foot width, and orientation. |
+| Trunk and Neck | Length from shoulder to hip, shoulder width, the position of the cross-section of the chest, lower ribs, abdomen, waist, hips, and neck root, center, width, and depth; the gap between the left and right arms at the same height. |
+| Local section of the limbs | Cross-sectional positions, centers, width, and depth of the left and right arms, elbows, forearms, wrists, thighs, knees, calves, and ankles. The cross-section is perpendicular to the axis of the limb and should not be confused with the horizontal width of the image. |
 
-在原扫描可见皮肤上绑定可重现的三维路径或截面；对遮挡裸身，从正侧参考建立估计，记录对应点和深度假设。区分沿表面的弧长、关节折线长、直线距离和垂直落差。没有足够证据的项标为未测，不能填入模板值伪装成测量。补充视图或建立有依据的估计后，才算覆盖该项。
+Bind reproducible 3D paths or sections to exposed scan skin. For covered anatomy, estimate from the front and side references, recording correspondences and depth assumptions. Distinguish surface arc length, joint-chain length, straight-line distance and vertical drop. Mark insufficient evidence as unmeasured. To cover a missing item, obtain another view or record an estimate with its evidence.
 
-**交付物：** 测量表、机器可读的点/路径/截面数据、标注图、坐标换算说明。按[量体脚本输入](../charloom-body-measure/references/script-inputs.md)运行 `working_frame.py`、`outline_points.py`、`surface_tape.py`、`mesh_sections.py`；保留原密集轮廓，不压缩成少数关节。应能从原始证据重算表中的值；每个必需部位均有实测或明确标注的估计及误差范围。
+**Deliverables:** Measurement sheets, machine-readable point/path/slice data, annotation diagrams, coordinate conversion instructions. Run [Body script input](../charloom-body-measure/references/script-inputs.md), `working_frame.py`, `outline_points.py`, `surface_tape.py`, `mesh_sections.py`; retain the original dense contours without compressing them into a few joints. The values should be able to be recalculated from the original evidence table; each required part has measured or clearly annotated estimates and error ranges.
 
-**进入拟合的条件：** 已逐项检查上述数据，目标与原图对应，单位一致，缺项已解决。生成了参考图、提取了轮廓或标好了关节，都不等于完成此步骤。若任务已委派，执行 agent 先提交这些文件及实际数值，主 agent 查阅证据后再放行拟合，不以口头进度替代检查。
+**Conditions for entry into the fitting process:** The above data have been checked item by item. The target corresponds to the original image, and the units are consistent. Any missing items have been resolved. The generation of reference images, extraction of contours, or marking of joints does not constitute completion of this step. If the task has been delegated, the agent must first submit these files and actual values. The main agent will review the evidence before approving the fitting, and oral progress cannot replace the necessary checks.
 
-## 4. 复核原扫描分件归属
+## 4. Review part ownership on the original scan
 
-在身体和衣物导出前按[服装分件](../charloom-garment-separate/SKILL.md)隔离查看原扫描组件及细小面片。将脸、颈、原手碎片、头发、眉毛、内部碎面、衣服和独立装备的归属绑定到 `source_hash`。共面或粘连部分按实际材质与几何边界细分。
+Before exporting the body and clothing, view the original scan components and small fragments using the [Clothing sub-pieces](../charloom-garment-separate/SKILL.md) isolation mode. Bind the faces of the face, neck, original hand fragments, hair, eyebrows, internal fragments, clothing, and individual equipment to the `source_hash`. Planar or bonded parts are subdivided according to the actual material and geometric boundaries.
 
 ```sh
 "$PY" skills/charloom-garment-separate/scripts/review_parts.py "$SCAN" --guide "$GUIDE" --out "$PARTS"
 ```
 
-逐个检查 `components.png` 和组件目录的正侧后图，将复核决定写到独立的 `decisions.json`；模板中的空 action 不能直接提交。复放命令及混合组件细分见分件 skill。
+Please check the side-by-side comparison in the `components.png` and component directory, and write the review decisions in a separate `decisions.json` document. Empty actions in the template cannot be directly submitted. For recompilation commands and mixed component details, refer to the component-specific skills.
 
-**交付物：** 分件证据、经检查的 `decisions` 及对应原三角面范围。使用 `--segment-evidence`、`--segment-review` 将决定传给 transfer。命令要求补充分件判断时完成复核再重跑，不能把所有未明面片默认塞进衣服层。
+**Deliverables:** Subdivided evidence, checked `decisions` and corresponding original triangular area ranges. The decisions will be passed to transfer using `--segment-evidence` and `--segment-review`. The command requires a review and rerunning when making a conditional judgment. All unmasked pieces should not be automatically placed in the clothing layer.
 
-## 5. 拟合身体，并用第 3 步目标复测
+## 5. Fit the body and remeasure against the targets from step 3
 
-使用[MakeHuman 裸模拟合](../charloom-body-fit/SKILL.md)，输入原扫描、模板、guide、已选轮廓、量体目标及分件决定。先按第 0 步确认动作由哪套骨架驱动。原构建保留步行源骨架时，执行[源骨架承载动作](../charloom/references/walk-replay.md#源骨架承载动作)的步骤一次性建立固定骨架。静态 transfer 省略 `--motion`，复测身体后完成原头与衣物装配，再用 `attach_fixed_rig.py` 将两层接到固定骨架，执行最终复测。下面的 transfer 命令用于由 MakeHuman 模板骨架承载动作的路线。
+Use [Fit the MakeHuman body](../charloom-body-fit/SKILL.md) with the scan, template, guide, selected contours, target measurements and segmentation decisions. Verify which rig drives the motion as in step 0. If the original build retains the source walk rig, use [Drive motion with the source rig](../charloom/references/walk-replay.md#drive-motion-with-the-source-rig) to establish the fixed rig once. Omit `--motion` for a static transfer. Remeasure the body and assemble the original head and garments, then attach both layers to the fixed rig with `attach_fixed_rig.py` and remeasure. The transfer command below applies when the MakeHuman template rig drives the motion.
 
 ```sh
 "$PY" scripts/scan-transfer.py "$SCAN" --prior "$PRIOR" --guidance "$GUIDE/guidance.json" --out "$TRANSFER" --motion "$MOTION" --mouth-trace "$GUIDE/mouth-trace.json" --segment-evidence "$PARTS/components.json" --segment-review "$PARTS/decisions.json"
 ```
 
-若标点变形后侧面厚度明显塌缩，按[标点变形与截面修形](../charloom-body-fit/references/section-refit.md)核查变形场，针对正面标点可区分的姿势选择保留深度的模式。
+If side-view thickness collapses after landmark deformation, inspect the deformation field using [Landmark deformation and cross-section refitting](../charloom-body-fit/references/section-refit.md). When the pose has distinct frontal landmarks, select the mode that preserves depth.
 
-首次导出后按测量 skill 为实际裸模建立哈希绑定的 `body-model.json`、`sections-model.json`，选择真实身体 primitive 和部位面，再执行：
+After the first export, create hash bindings for the actual bare model according to the measurement skill of `body-model.json` and `sections-model.json`. Select the real body primitive and body parts, and then execute:
 
 ```sh
 "$PY" skills/charloom-body-measure/scripts/outline_points.py "$GUIDE" --frame "$MEASURE/frame.json" --model-spec "$MEASURE/body-model.json" --out "$MEASURE/outline-export"
@@ -138,27 +140,27 @@ cp "$GUIDE/guidance.template.json" "$GUIDE/guidance.json"
 "$PY" skills/charloom-body-measure/scripts/mesh_sections.py "$MEASURE/sections-spec.json" --model-spec "$MEASURE/sections-model.json" --out "$MEASURE/sections-export"
 ```
 
-`body-model.json.regions` 要同时覆盖密集轮廓 group 和六条路径名称。需要修形时，按[完整身体及局部截面修形](../charloom-body-fit/references/section-refit.md)执行 `refit_sections.py`，用同拓扑的完整模板恢复胸廓、调整局部肢体，再用 `copy_body.py` 将通过复测的身体带入本轮裸模和穿衣文件。每轮使用新目录并重算对应文件摘要。
+`body-model.json.regions` should cover both dense contour groups and six path names. When shape correction is needed, follow[Complete body and local cross-section shaping](../charloom-body-fit/references/section-refit.md) to`refit_sections.py`. Use the complete template with the same topology to restore the chest and adjust the local limbs. Then, use`copy_body.py` to bring the body into the current round of bare model and clothing documents. Use a new directory for each round and recalculate the corresponding document summaries.
 
-理解当前程序的实际能力：`fit_template` 用解剖标记对模板和骨架作空间变形；`fit_body` 用配准视图的轮廓约束身体，并通过平滑项保留初始形状。它们不自动读取第 3 步完整测量表，也不自动阻止量体缺失。未被充分约束的形状仍受模板和正则项影响，首次导出必须按量体目标修整和复测，不能当作完成品。
+Understanding the actual capabilities of the current program:`fit_template` Performing spatial deformation on templates and skeletons using anatomical markers;`fit_body` Constraining the body with the contours of the registration view, and maintaining the initial shape through smoothing terms. They do not automatically read the complete measurement table from step 3, nor do they automatically prevent body part loss. Shapes that are not fully constrained are still affected by templates and regularization terms. The first export must be trimmed and re-measured according to body part targets, and cannot be considered completed.
 
-1. 检查 `report.json` 的源哈希、模板、工作坐标、`stage2_body_fit.contours` 和 `registered_views`，确认实际使用了本次输入。当前代码优先读取存在的 ensemble 文件，必须确认没有误用旧轮廓。
-2. 在实际 `3-skin/body.glb` 上重绑对应测点和表面路径，按第 3 步相同定义复测。用 `mh-check-lengths.py` 检查它支持的双侧长度；截面和臂腰间隙另按量体方法计算。记录目标、实际值、带符号误差与预先选定的容差。
-3. 按原标定相机叠加正面、侧面轮廓，并查看斜侧面。逐部位核对胸腹厚度、肩腋连续性、颈根、腕掌、指尖和脚掌。全身轮廓误差的中位数不能代替局部尺寸或表面质量。
-4. 用无贴图材质检查几何凹折，再用原材质检查肤色与纹理。衣甲颜色投到了裸身、颈肩断层、手脚比例错误或超差，都要回到对应输入或形状修正；每次修正后复测受影响项目。不能放宽容差来掩盖偏差。
-5. 播放完整行走及肩、肘、膝等相关动作，检查表面长度、截面和腋下变形。骨骼长度一致不代表皮肤尺寸一致。
+1. Check the source hash, template, working coordinates, `stage2_body_fit.contours` and `registered_views` in `report.json`. Confirm this run used the intended inputs. The implementation prefers an existing ensemble file, so verify that an older contour set did not take precedence.
+2. Rebind the corresponding measurement points and surface paths on the actual `3-skin/body.glb`, and perform the re-measurement according to the same definition as in step 3. Use `mh-check-lengths.py` to check the bilateral length it supports; the cross-section and hip gap are calculated using the corresponding method. Record the target value, actual value, signed error, and the pre-selected tolerance.
+3. Overlay the front and side profiles according to the original calibration camera, and examine the diagonal sides. Check the chest and abdominal thickness, continuity of the shoulder and armpit area, neck base, wrist, fingertips, and sole for each part. The median error of the overall body contour should not be used to replace individual dimensions or surface quality.
+4. Use a textureless material to check the geometric concave folds, and use the original material to check skin color and texture. If the armor color is incorrect or off by a significant margin in terms of naked body proportions, neck and shoulder fractures, or hand and foot ratios, all need to be corrected to the corresponding input or shape; re-measure the affected items after each correction. Do not let errors be allowed to accumulate to cover up deviations.
+5. Play the entire walking and shoulder, elbow, knee-related movements to check the surface length, cross-section, and underarm deformation. Consistent bone lengths do not mean consistent skin sizes.
 
-**完成条件：** 裸身目标尺寸在可解释的误差范围内，局部轮廓和几何检查通过，运动中没有尚未解决的明显变形。身体还未通过时，后续装配仅能作为诊断，不能记为完成交付。
+**Completion Criteria:** The naked target dimensions must be within an explainable error range. Local contours and geometric checks must be passed. There should be no unresolved deformations in the movement. The body must have been completed before subsequent assembly can be considered a successful delivery, but it cannot be recorded as completed.
 
-**条件替代：** 只有原扫描确实存在可分离的躯干和四肢五个皮肤壳体，且任务适用时，才进入[扫描壳体装配](../charloom-scan-volume/SKILL.md)。先检查壳体证据；该分支仍需量体和导出复测。身体路线的选择不改变保留原扫描头的要求。
+**Condition substitution:** Only when the original scan indeed has separable trunk and limbs, with five skin shells, and the task is applicable, will the process proceed to [Scanning Shell Assembly](../charloom-scan-volume/SKILL.md). First, check the shell evidence; this branch still requires measurement and export for verification. The selection of the body's layout does not change the requirement to retain the original scan head.
 
-## 6. 接合原头并绑定五官
+## 6. Attach the original head and bind the facial features
 
-按[下颌与颈部](../charloom-body-fit/references/neck-and-jaw.md)接合原头与已通过复测的身体，再按[面部与说话](../charloom-face-dialogue/SKILL.md)和[构建命令](../charloom-face-dialogue/references/face-build.md)绑定原扫描表面。
+Connect the original head with the tested and approved body, and then bind the original scanning surface using [Mandible and Neck](../charloom-body-fit/references/neck-and-jaw.md) and [Face and Speech](../charloom-face-dialogue/SKILL.md)/[Build commands](../charloom-face-dialogue/references/face-build.md).
 
-默认使用 `bind_scan_head.py` 或 `api.build_character(..., head_binding="scan-surface")`。核对报告中的 `route=scan_surface_binding`、源哈希与原扫描对应误差。中性脸的可见表面、UV、贴图应保留；唇缝分割、眼睑和口腔内壁随实际边缘运动。重建眼球或解剖脸的 `anatomical` 路线仅在任务明确需要时选用。
+By default use `bind_scan_head.py` or `api.build_character(..., head_binding="scan-surface")`. Check `route=scan_surface_binding`, the source hash and surface correspondence error against the scan. Retain the neutral visible face, UVs and texture. The split lip seam, eyelids and oral lining should follow their actual boundaries. Select the `anatomical` route to reconstruct eyeballs or an anatomical face only when the task requires it.
 
-本轮 transfer 保留原头所需源资料和 `mouth-trace.json`。设置目录并执行：
+This round of transfer retains the original source materials required for the transfer `mouth-trace.json`. Set the directory and execute:
 
 ```sh
 export CHARLOOM_TRANSFER_DIR="$(dirname "$TRANSFER")"
@@ -170,31 +172,31 @@ bun scripts/roster/embed-clips.ts "$NAME"
 bun scripts/roster/verify-face.ts "$NAME"
 ```
 
-`CONFIG` 按面部 skill 指定原面部、眼部和保留面片的源面范围，以 `NAME` 为键；无额外分件配置时才省略 `--config`。输出为 `$BUILD_PARENT/$NAME/3-skin/body.glb` 和 `4-garments/character.glb`，同时生成原表面对应与面部动作报告。
+`CONFIG` Specify the original facial, eye, and retained face regions based on facial skills, with `NAME` as the key; this is omitted when there is no additional segmentation configuration.`--config` is omitted. The output consists of `$BUILD_PARENT/$NAME/3-skin/body.glb` and `4-garments/character.glb`, and also generates a report of facial movements corresponding to the original surface.
 
-需要面部动作时嵌入并验证动作，在裸模与穿衣版都检查：中性脸、完整眨眼、视线变化、M/B/P 闭唇、F/V 接触、最大张口和转头。保存动作时间、近景/侧视图及几何结果。检查闭唇同时是否有唇部挤穿、眼睑翻折、口内面片外露和颈缝，不以单个数值通过代替外观检查。
+When facial movements are required, incorporate and verify them. Check in both bare model and dressed versions: neutral face, complete blinking, eye gaze changes, M/B/P closed lips, F/V contact, maximum opening of the mouth, and head rotation. Record the duration of movements, close-up/side views, and geometric results. Check for closed lips with any signs of lip penetration, eyelid folds, exposed intraoral areas, and neck seams. Do not rely on individual numerical values to replace the visual inspection.
 
-**完成条件：** 已核验实际执行入口与原头对应关系；所需五官动作和头颈接合均通过检查。
+**Completion Conditions:** The correspondence between the actual execution entrance and the original head has been verified; the required facial features and the connection between the head and neck have also been checked.
 
-## 7. 适配衣物、装备与必要纹理
+## 7. Fit clothing and equipment and repair textures
 
-按[衣料与装备适配](../charloom-garment-fit/SKILL.md)，以最终身体为基准调整尺寸和绑定。护具分别量近端、中段和开口截面；刚性件用对应挂点，布料和自由面板按各自运动方式绑定。检查袖口、手套、头发、衣领和道具是否存在遗落面片或错误骨骼归属。
+Follow [Clothing and equipment adaptation](../charloom-garment-fit/SKILL.md) and adjust sizing and binding against the final body. For guards, measure proximal, middle and opening sections separately. Use the appropriate attachment for rigid pieces and the intended motion for cloth and free panels. Check cuffs, gloves, hair, collars and props for stray triangles and wrong bone assignments.
 
-衣物的分件名称、层次、`rig` 和 `fabric` 写在 guide 的 `garments` 项中，首轮由 transfer 读取；其确切字段与重绑入口见[服装执行方法](../charloom-garment-fit/references/build-and-check.md)。身体后来发生修形时，对最终装配做局部适配，保存新输出，不重新跑首次拟合覆盖已验身体。
+The names, hierarchy, `rig`, and `fabric` of the clothing's sub-parts are written in the `garments` section of the guide. The first round of reading is performed by transfer; the exact fields and re-binding points can be found in [Clothing execution methods](../charloom-garment-fit/references/build-and-check.md). When the body is later modified, local adjustments are made to the final assembly. The new output is saved, and no re-fitting is required for the initial fit that covers the already verified body.
 
-在裸模、纯衣服、穿衣版间查看同一帧，确认衣服层不残留旧手指、指甲或皮肤碎片。对静止、完整步态、抬臂和弯曲姿势记录最差穿插帧并修正。完整裸模必须保留衣下身体，不能直接把穿衣文件中裁过的身体当作裸模。
+View the same frame in the bare model, pure clothing, and dressed versions. Ensure that there are no remnants of old fingers, nails, or skin fragments on the clothing layers. Record the worst-interrupted frames for static, complete gaits, arm lifts, and bending postures, and correct them. The complete bare model must retain the underlying body structure; the cut parts from the dressed file cannot be used as a bare model.
 
-换装仅在任务要求时执行；纹理错位、黑面或缺纹理时按[服装纹理修复](../charloom-garment-texture/SKILL.md)处理，优先保留可见原扫描表面与 UV。补绘范围和服务收据需可追溯。
+Changing the appearance is only performed when required by the task; in cases of texture dislocation, black surfaces, or missing textures, it is handled according to [Clothing texture restoration](../charloom-garment-texture/SKILL.md), with priority given to retaining the visible original scanned surface and UVs. The range for retilement and service receipts must be traceable.
 
-**完成条件：** 分件、佩戴尺寸和运动正确；身体调整引起的衣物变化已复查，未通过的穿插或纹理问题仍明确列出。
+**Completion Requirements:** Segments, correct wearing size and movement; changes in clothing caused by body adjustments have been reviewed. Any unresolved issues with interlacing or texture remain clearly listed.
 
-## 8. 导出可编辑场景和最终动作文件
+## 8. Export the editable scene and final motion files
 
-按[Blender 构建与动作](../charloom/SKILL.md)导入已检查的构建，保存可编辑场景并导出任务所需 GLB。若集成构建重新生成了身体或头部，核对它实际使用的输入和输出，重跑被重建部分的复测，不能默认保留手工修正。
+Import the checked build according to [Blender construction and actions](../charloom/SKILL.md), save the editable scene, and export the GLB required for the task. If the integration build generates a new body or head, verify the actual inputs and outputs used. Re-run the verification for the reconstructed parts. Do not default to retaining manual corrections.
 
-复现步行时，在裸模和穿衣版分别执行[步行轨道比较](../charloom/references/walk-replay.md#检查实际写入的动作)，对照原构建逐项解释轨道与静止骨架差异，再检查原姿态的腕掌朝向和脚底高度。走路出现鞋底穿地或漂浮时，按[步行接地](../charloom/references/walking-ground.md)测量并修正实际穿衣动作，把同一根平移写入两层，以下命令使用修正后的构建目录。
+When reproducing a walk, run [Walkway comparison](../charloom/references/walk-replay.md#check-the-tracks-actually-written-to-the-glb) on both bare and dressed exports. Account for differences from the original build in each track and in the rest skeleton. Check palm orientation and sole height in the original pose. For floating or penetrating soles, follow [Walking grounding](../charloom/references/walking-ground.md) on the actual dressed motion and write the same root translation to both layers. Use the corrected build directory in the commands below.
 
-已完成的 GLB 直接导入，避免重新拟合：
+Completed GLB direct import, avoiding re-fitting:
 
 ```sh
 "$BLENDER" -b --factory-startup --python-exit-code 1 --python scripts/blender_character.py -- "$BUILD_PARENT/$NAME/4-garments/character.glb" "$BLENDER_OUT" --clip walking --export-glb
@@ -203,13 +205,13 @@ bun scripts/roster/verify-face.ts "$NAME"
 "$PY" scripts/animate.py validate "$BLENDER_OUT/character.glb"
 ```
 
-对最终裸模、穿衣版以及额外 Blender 导出分别执行 `scripts/animate.py validate`，核对动作名称、时长、骨架、蒙皮、面部 morph 与材质。保存源文件、构建配置、报告及最终文件哈希。
+Perform `scripts/animate.py validate` for the final bare model, dressed version, and additional Blender exports. Verify the action names, duration, skeleton, skinning, facial morph, and materials. Save the source files, build configuration, report, and final file hash.
 
-**完成条件：** 最终文件与被测版本一致；可编辑场景可打开，所需动作实际可播放。命令成功退出只证明执行完成，不代替量体、动作和视觉检查。
+**Completion Conditions:** The final file must be consistent with the version being tested; the editable scenes must be open, and the required actions must actually be playable. The successful exit of the command only proves that the execution is complete, and does not replace the verification of the entity, actions, and visual checks.
 
-## 9. 在 Gallery 核对实际交付
+## 9. Verify the delivery in the Gallery
 
-按[导出与 Gallery 验证](../charloom-gallery-review/SKILL.md)先预览登记，再同步到本次本地 Gallery。打开实际角色 URL，检查请求的 GLB 是否为刚验证的文件。
+First, preview the registration in[Export and Gallery Verification](../charloom-gallery-review/SKILL.md) mode, and then synchronize it to the current local Gallery. Open the actual character URL and check if the requested GLB is the file that was just verified.
 
 ```sh
 python3 scripts/mh-ide-sync.py "$BUILD_PARENT" --dry-run
@@ -217,14 +219,14 @@ python3 scripts/mh-ide-sync.py "$BUILD_PARENT"
 (cd viewer && bun run dev)
 ```
 
-使用同步输出的实际条目和 URL，必要时复用正在运行的 viewer。若最后在 Blender 修改了 GLB，先把该文件登记到本轮明确选定的条目并核对来源，不能仍让 Gallery 加载早期 build。
+Use the actual entries and URLs from the synchronized output. Reuse the running viewer if necessary. If the GLB file is modified in Blender, register this file in the entries selected for this round and verify the source. Do not allow the Gallery to load early builds.
 
-在暂停的非零动作时间，保持相机和动作不变，切换裸模、纯衣服、穿衣版，核对时间保持和衣下身体完整性；继续检查播放中切层。实际播放行走、面部及任务所需动作，从正、侧、后和问题部位近景复查。保留 URL、文件哈希、动作时间和截图。
+During the paused non-zero action time, keep the camera and actions unchanged. Switch between bare model, pure clothing, and dressed versions. Verify the time and maintain the integrity of the body beneath the clothing. Continue to check the cutaways during playback. Perform actual playback of walking, facial expressions, and actions required for the task, reviewing from the front, side, back, and close-up of the problem areas. Retain the URL, file hash, action duration, and screenshots.
 
-**交付记录：** 列出量体目标与复测结果、实际身体/原头路线、裸模与穿衣 GLB、Blender 场景、Gallery 实际加载情况，以及仍存在的问题。内部检查、运行时验证和用户视觉认可分别记录；用户尚未审阅时，不标为用户通过。
+**Delivery Records:** List the target quantities and retesting results, actual body/original head route, bare model and dressed GLB, Blender scene, actual loading of the gallery, as well as any remaining issues. Internal checks, runtime verification, and user visual approval are each recorded; when the user has not yet reviewed, it is not marked as approved by the user.
 
-## 中断、修订与委派后的核验
+## Interruption, revisions, and verification after delegation
 
-以最后一个有证据通过的阶段继续。修改扫描会使哈希绑定资料失效；修改相机或尺度要重算配准与量体；改变身体拓扑要重绑复测路径；修改身体形状要重做受影响的衣物和动作检查。测试案例、临时目录、失败日志与角色专用参数保存在任务产物中，不写进通用 skill。
+Proceed to the last stage with evidence. Modifying the scan will render the hash binding data invalid; modifying the camera or scale requires recalculating the alignment and body proportions; changing the body topology requires re-binding and remeasuring the path; modifying the body shape requires reprocessing the affected clothing and action checks. Test cases, temporary directories, failure logs, and role-specific parameters are stored in the task artifacts and are not included in the general skill.
 
-任务采用 subagent 时，主 agent 必须核对实际执行路径：原始输入及哈希、拟合前测量证据、构建入口与配置、最终加载文件。阶段汇报要给可查的文件和实际结果。发现跳过依赖、替换输入或采用不同头部路线，先纠正并重做受影响步骤，再继续下游。
+When using a subagent, the main agent must verify the following: the original input and hash, measurement evidence before fitting, build entry and configuration, and the final load file. Phase reports should include verifiable documents and actual results. If it is found that dependencies were skipped, input was replaced, or different head routes were used, the affected steps must be corrected and redone before proceeding downstream.

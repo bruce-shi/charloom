@@ -1,5 +1,7 @@
 # MakeHuman (MPFB) prior bodies
 
+English · [简体中文](mpfb-prior.zh-CN.md)
+
 `charloom mh-transfer` reshapes a rigged MakeHuman body: the MPFB default rig
 (163 bones, with face and finger chains) and its weights. The prior bodies
 are generated in a background Blender process with pinned inputs.

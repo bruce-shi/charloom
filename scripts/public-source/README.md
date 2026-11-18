@@ -1,6 +1,10 @@
 # Private and public checkouts
 
-The public repository has its own root commit and main branch. The exporter reads committed blobs from the configured private branch. The selector in `paths.py` includes current Blender, Python, viewer, recipe and skill source, including skill references and scripts. List additional reviewed configuration and documentation paths in `files.txt`. The public ignore file has its own template. Files under `assets/public/` are published byte-for-byte. Private inputs, run records and memory directories stay in the development checkout. Public-only files such as LICENSE may live in public main.
+English · [简体中文](README.zh-CN.md)
+
+The public repository has its own root commit and main branch. The exporter reads committed blobs from the configured private branch. The selector in `paths.py` includes current Blender, Python, viewer, recipe and skill source, including skill references and scripts. List additional reviewed configuration paths in `files.txt`. The public ignore file has its own template. Files under `assets/public/` are published byte-for-byte. Private inputs, run records and memory directories stay in the development checkout. Public-only files such as LICENSE may live in public main.
+
+Markdown guides in `docs/` are exported automatically. Store run histories in `docs/history/` and checkpoints in `docs/checkpoints/`. Use `topic.md` for English and `topic.zh-CN.md` for Simplified Chinese. Link to the matching language, including its section heading. For skills, keep `SKILL.md` as the discoverable English entry point.
 
 ## Configure a private checkout
 

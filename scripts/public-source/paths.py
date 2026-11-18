@@ -30,13 +30,17 @@ def public_path(name, listed):
     if restricted(name):
         return False
     path = PurePosixPath(name)
-    if name.startswith("assets/public/") or name in listed:
+    english_page = name.removesuffix(".zh-CN.md") + ".md"
+    translated_entry = name.endswith(".zh-CN.md") and english_page in listed
+    if name.startswith("assets/public/") or name in listed or translated_entry:
         return True
     if "assets" in path.parts or "fixtures" in path.parts or "inputs" in path.parts:
         return False
     if name.startswith("scripts/public-source/"):
         # Configuration and public templates have explicit entries.
         return path.suffix == ".py" or path.name in {"merge-public", "post-commit"}
+    if name.startswith("docs/"):
+        return path.suffix == ".md"
     if name.startswith("schemas/"):
         return path.suffix == ".json"
     if path.parts[0] in SOURCE_ROOTS:

@@ -1,5 +1,7 @@
 # Neck and jaw
 
+English · [简体中文](neck-and-jaw.zh-CN.md)
+
 Trace the actual lower jaw, throat and nape from front, profile and below. Hide hair and the collar to expose the skin. At the front, follow the facial surface to the underside of the chin. Behind the ears, follow the inner skin boundary. Fused hair or a collar can give a second intersection on the same ray. Where hair hides the nape, continue the measured neck section inside the scalp and record the inferred portion.
 
 For a gap under the chin, connect the open body-neck loop to the traced jaw boundary around its circumference. Fill missing posterior sections locally so a long triangle cannot span the opening. For a step at the neck root, blend the transition into the shoulder slope over the adjacent rows of vertices. Pin the observed jaw, preserve the clavicle and soften only the discontinuity. Check face winding and share compatible shading normals and weights across joined skin. Turn the head both ways and sample dialogue. Check paired seam vertices **and** look for holes, spikes and folds beside them under grazing light.

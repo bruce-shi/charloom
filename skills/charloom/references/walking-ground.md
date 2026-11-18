@@ -1,17 +1,19 @@
-# 用靴底核对行走接地
+# Check walking contact at the boot soles
 
-先从正侧视图区分步行的连续支撑和跑步的腾空阶段。在世界坐标中检查静止与整段步态的最低点，区分裸足、鞋内余量、鞋跟和鞋底。生成量体图把厚靴变成薄袜时，袜底可能沿用原靴的地面；记录这一项的来源与偏差。若参考只给出靴底高度，不能直接把裸脚底向下拉到该高度。
+English · [简体中文](walking-ground.zh-CN.md)
 
-当重定向的步行有明显穿地或双脚漂浮，在原头、服装和动作装配后使用 `scripts/ground-walk.py`。先查看实际穿衣 GLB 中鞋底所属的节点、动作名与所有层的公共根骨，为本次导出写 JSON 配置：
+First, distinguish the continuous support during walking from the takeoff phase of running from the frontal view. In world coordinates, check the lowest point of the gait when the foot is at rest, and differentiate between barefoot, insole space, heel, and sole. When converting thick boots to thin socks, the sole may inherit the ground conditions of the original boot; record the source and deviation of this item. If the reference only provides the heel height, it is not possible to directly draw the barefoot sole to that height.
 
-- `reference` 为有实际接触面的穿衣 GLB。`variants` 是从期望输出相对路径到输入 GLB 路径的对象，填写裸身及穿衣两个文件，并包含 reference。
-- `contact_meshes` 为经过隔离查看且真正接地的节点名称列表。`clip`、`root` 使用目标文件内的动作名和控制整体位置的节点名。
-- `ground_y` 是目标世界地面高度，单位米。`sample_hz` 是初始采样频率，`tolerance_mm` 是接地误差限。根据原动画帧率、鞋型和实际场景确定。连续支撑的步行使用 `walking`；带腾空的跑步使用 `motion_kind=running`，仅抬起低于地面的靴底，保留高于地面的部分。需要保留逐值相同的旧骨骼轨道时，将 `root` 指向角色骨架上方实际的公共容器，单独给容器增加舞台高度轨。
+When the redirected walk is clearly done with one foot or both feet floating, use `scripts/ground-walk.py` after checking the original head, clothing, and action configuration. First, check the nodes where the soles belong in the actual clothing GLB, the action names, and the common root bone of all layers. Configure the JSON for this export:
+
+- `reference` Refers to the clothing GLB with actual contact surfaces.`variants` Represents the object that connects the expected output relative path to the input GLB path. It requires filling in two files: the naked and clothing files, and also including a reference.
+- `contact_meshes` is a list of node names that have been isolated for review and are truly grounded.`clip` and`root` use action names and node names that control the overall position from the target file.
+- `ground_y` represents the ground height in the target world, measured in meters.`sample_hz` is the initial sampling frequency.`tolerance_mm` is the ground clearance limit. This value is determined based on the original animation frame rate, shoe style, and actual scene conditions. Continuous support walking uses `walking`; running with takeoff uses `motion_kind=running`, which only lifts the sole of the shoe that is below the ground, while retaining the part above the ground. When it is necessary to preserve the old bone trajectory with the same value progression, `root` should be directed towards the actual common container above the character's skeleton, and a separate stage height track should be added to this container.
 
 ```sh
 "$PY" scripts/ground-walk.py "$GROUND_CONFIG" --out "$GROUNDED"
 ```
 
-核对 `ground-walk.json` 的原接触高度范围、修正后的极值、导出哈希和非根骨动画通道检查。脚本复测关键帧之间的接地误差，写入两层共用的根平移。查看完整步态的承重、滑步与膝部运动；切换裸身和鞋靴时保留同一世界位置。后续 Blender 和 Gallery 应读取这次修正后的文件，复核其动作和两层哈希。
+Inspect `ground-walk.json` for the original contact-height range, corrected extrema, export hashes and checks on non-root animation channels. The script remeasures contact between keyframes and writes a root translation shared by both layers. Inspect weight transfer, sliding and knees over the whole gait. Keep the same world position when switching between bare feet and footwear. Load the corrected files in Blender and the Gallery and verify their motion and both hashes.
 
-若最低点在地面，但每一步都只有脚尖着地，先修正动作映射再接地。对照源动作和导出动作的同一时刻，检查支撑脚的脚跟、前脚掌以及摆动脚。量源和目标在静止状态下从踝骨到被映射子骨的方向；有的骨架以短足弓为子段，有的直接连到远端趾骨。两个方向不同，启用 `align_reference_chains` 时可能引入固定的额外俯仰。对于由这种差异引起的问题，把实际左右脚骨名加入 retarget 配置的 `preserve_reference_joints`，保留目标脚的静止朝向，应用源动作的旋转变化。用原动作重建两层行走，在步幅两端与支撑转换帧复查足部，再测根轨迹和鞋底。
+If the lowest point reaches the floor but only the toes make contact at every step, correct the motion mapping before grounding. Compare the support heel, ball and swing foot at matching times in source and export. Measure the rest direction from ankle to mapped child on both rigs. One may use a short foot arch and the other connect directly to a distal toe. With `align_reference_chains` enabled this difference can introduce a constant pitch offset. If confirmed, add the actual left and right foot bone names to `preserve_reference_joints` in the retarget config. Keep the target foot’s rest orientation and apply the source rotation changes. Rebuild both layers with the original motion, inspect the feet at stride extremes and support transitions, then remeasure root motion and soles.

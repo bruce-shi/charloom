@@ -1,27 +1,29 @@
-# 从原扫描生成量体图
+# Generate a digital model from the original scan.
 
-在仓库根目录运行。设 `PY` 为项目 CV 环境的 Python，`SCAN` 为原扫描 GLB，`GUIDE` 为这个扫描的标定目录，`MEASURE` 为量体产物目录。源图使用标定相机渲染的正交视图。保留各图的像素坐标、`views.json` 和源哈希，方便把端点投回同一工作坐标。
+English · [简体中文](measurement-plates.zh-CN.md)
 
-## 1. 取得标定底图
+Run in the root directory of the repository. Let `PY` be the Python of the project's CV environment, `SCAN` be the original scan GLB, `GUIDE` be the calibration directory of this scan, and `MEASURE` be the volume product directory. The source image uses the orthographic view rendered by the calibration camera. Preserve the pixel coordinates of each image, `views.json` and the source hash, to facilitate the projection of endpoints back to the same working coordinate system.
 
-按[扫描标定](../../charloom-scan-guide/SKILL.md)用 `scan-guide.py "$SCAN" --out "$GUIDE"` 渲染原扫描。完成正面朝向与关节标注，运行 `scan-guide.py "$SCAN" --check "$GUIDE/guidance.json"`。读 `front_view`，从标定相机选择其偏航角加 90° 的侧图。检查头脚完整和地面线。若已有匹配的 guide，从这一步的检查继续。
+## 1. Prepare calibrated base images
 
-## 2. 生成同姿紧身衣参考
+Follow [Scanning Calibration](../../charloom-scan-guide/SKILL.md) and render the original scan with `scan-guide.py "$SCAN" --out "$GUIDE"`. Mark the front direction and joints, then run `scan-guide.py "$SCAN" --check "$GUIDE/guidance.json"`. Read `front_view` and choose the calibrated side camera with a yaw 90° beyond the front camera. Check the entire head, feet and ground line. For an existing matching guide, resume at these checks.
 
-先按[图片服务依赖](../../charloom/references/setup.md#图片服务依赖)准备 ImageMagick、genmedia 和 fal。以下命令保留原始手臂姿势，用于关节、臂长和相机配准。
+## 2. Generate a same-pose bodysuit reference
+
+First, prepare ImageMagick, genmedia, and fal as per [Image service requirements](../../charloom/references/setup.md#image-service-requirements). The following commands maintain the original arm pose, used for joint, arm length, and camera calibration.
 
 ```sh
 "$PY" scripts/mh-bodysuit.py "$GUIDE" --edit --back
 "$PY" scripts/mh-suit-contours.py "$GUIDE"
 ```
 
-第一条命令把同一角色的正、侧、背标定图横向拼接，通过 fal 的 GPT Image 2.5 Sunburst edit 生成一张 2560 × 1136 的 PNG，质量为 medium。只要正、侧两图时省略 `--back`，尺寸为 2048 × 1360。实际提示词见[脚本的 SHEET 和 PROMPT](../../../scripts/mh-bodysuit.py)。使用同一角色与相机，衣甲替换为贴身绿色连体服。原肩、肘、腕位置允许时，基础侧图就让手掌竖直贴大腿外侧、指尖向下。若要移动整条手臂才能让出腹缘，则保留同姿输入，按下一步另做躯干侧图。保留 `views/bodysuit_sheet-2k.png`、各视图原生输出和 `bodysuit_<view>-reg.png`。收据记录在 `views/bodysuit.json` 的 `sheet`，缓存位于 `views/measurement-cache/`。相同参数重新执行 `--edit` 时复用缓存或恢复原请求。
+The first command splices the frontal, side, and dorsal views of the same character horizontally, and uses fal's GPT Image 2.5 Sunburst edit to generate a PNG image with dimensions 2560 × 1136, with medium quality. When only the frontal and side views are used, the dimensions become 2048 × 1360, omitting the `--back`. The actual prompt can be found in [The SHEET and PROMPT of the script](../../../scripts/mh-bodysuit.py). The same character and camera are used, with the armor replaced with a green bodysuit. If the original shoulder, elbow, and wrist positions are allowed, the basic side view shows the palms lying vertically on the outside of the thighs, with the fingertips pointing downward. If the entire arm needs to be moved to expose the abdominal edge, the same pose input is retained, and the next step will generate a lateral view of the torso. The `views/bodysuit_sheet-2k.png`, native outputs of each view, and `bodysuit_<view>-reg.png` are preserved. The receipt is recorded in the `views/bodysuit.json` section of the `sheet`, and the cache is located in the `views/measurement-cache/`. When the `--edit` command is executed with the same parameters, the cache is reused or the original request is restored.
 
-叠看标定底图和注册图。核对脸、腕、脚底、朝向、整体尺度和局部轮廓；检查 `checks.scale`、`anchors`、`side_feet_px` 和 `accepted`。第二条命令从配准图生成全身轮廓。查看每一行两个端点实际落在哪个部位。手指、腕或前臂挡住腹部时，保留同姿图用于手臂测量，把被挡的躯干端点从拟合输入中移除。
+Compare the calibration map with the registration map. Check the face, wrist, foot, orientation, overall scale, and local contours; examine `checks.scale`, `anchors`, `side_feet_px`, and `accepted`. The second command generates the full-body contour from the registration map. Observe which part each endpoint actually falls on in each row. If the fingers, wrist, or forearm cover the abdomen, retain the same pose map for arm measurement, and remove the covered trunk endpoints from the fitted input.
 
-## 3. 生成手掌竖贴大腿的侧面量体图
+## 3. Prepare a torso profile with the palm against the thigh
 
-采用完整人物的侧视图。近侧手掌竖直贴在大腿外侧，腕在上、指尖朝下。侧面投影中，手指应落在大腿轮廓内，小腹前缘应连续可见。躯干、骨盆、头、腿、脚、拍摄方向、比例和地面线与已配准侧图一致。同姿图已经满足要求时可直接用它量躯干。
+A side view of a full-body character is used. The lower palm is placed vertically on the outside of the thigh, with the wrist at the top and the fingertips pointing downward. In the side projection, the fingers should be within the contour of the thigh, and the front edge of the abdomen should be continuously visible. The torso, pelvis, head, legs, feet, shooting direction, proportions, and ground lines should be consistent with those in the aligned side view. When the same pose image meets the requirements, it can be used directly to measure the torso.
 
 ```sh
 PROFILE="$MEASURE/profile-hand-at-thigh"
@@ -29,39 +31,39 @@ PROFILE="$MEASURE/profile-hand-at-thigh"
 "$PY" skills/charloom-body-measure/scripts/torso_profile.py "$GUIDE" --out "$PROFILE" --generate
 ```
 
-第一条只写 `plan.json`，可先核对输入图、源哈希、提示词和参数。第二条通过 genmedia 提交或恢复同一个缓存请求。输出 `profile-native.png` 为 1536 × 2048、medium 的原生 PNG；`profile-candidate.png` 回到基础相机的 768 × 1024 画布；`generation.json` 记录源图哈希、生成参数和服务收据。检查整个人物和手指落点，再对图配准。
+The first command writes only `plan.json`. Check the input images, source hash, prompt and parameters there. The second submits or resumes the same cached request through genmedia. The native medium-quality PNG `profile-native.png` is 1536 × 2048. The image `profile-candidate.png` uses the base camera’s 768 × 1024 canvas. File `generation.json` records the source image hash, generation parameters and service receipt. Check the whole character and finger positions before registering the image.
 
-## 4. 把侧面补图配回同一相机
+## 4. Register the additional profile to the same camera
 
-在候选图和基础配准侧图中，以左上为原点分别点取共同可见的稳定标志。在头、足等相距足够远的位置选择至少两个同名点拟合等比缩放和平移，另选至少两个不同位置作独立检查。优先加入仍可辨认的背、膝或臀后缘，避免只在同一个局部检查。记录 `anchors.json`，含两张图的 `base_sha256` 和 `candidate_sha256`、可接受的 `tolerance_px`、`fit` 与 `check` 两个数组。每项写具体解剖点名 `name` 和两组实际像素 `candidate_px: [x,y]`、`base_px: [x,y]`。按测点可辨度和标定相机的毫米/像素换算确定容差。手掌、前臂和生成补出的腹缘不能作配准锚点。
+In the candidate map and base registration side map, select at least two points with the same name that are sufficiently far apart for proportional scaling and translation. Also select at least two different positions for independent verification. Prioritize including the still recognizable posterior, knee, or gluteal margins to avoid only local inspections. Record the arrays for `anchors.json`, `base_sha256` and `candidate_sha256` from the two maps, the acceptable `tolerance_px`, `fit`, and `check`. Specify the specific anatomical point names as `name` and two sets of actual pixel values as `candidate_px: [x,y]` and `base_px: [x,y]`. Determine the tolerance based on the visibility of the measuring points and the conversion between millimeters/pixels for the calibration camera. Palms, forearms, and the generated abdominal margin should not be used as registration anchors.
 
 ```sh
 "$PY" skills/charloom-body-measure/scripts/register_profile.py "$PROFILE" "$PROFILE/anchors.json" --out "$PROFILE/registration"
 ```
 
-检查 `registration.json` 内每个点的残差，放大 `overlay.png` 对照头、背、臀、腿、脚的位置。锚点合格后再看腹部逐行轮廓是否通顺、有没有手掌或袖口误入。出现局部形变时单独排除该区。保留原图和重合图。
+Inspect the residual for every point in `registration.json`. Enlarge `overlay.png` and compare the head, back, buttocks, legs and feet. Once the anchors agree, inspect the abdominal contour row by row for discontinuities or a hand or cuff included by mistake. Exclude localized deformation separately. Keep both the original image and the overlay.
 
-## 5. 生成带测点的图
+## 5. Render the measurement overlays
 
-按[量体脚本输入](script-inputs.md)先生成 `frame.json`。运行 `outline_points.py` 提取基础图的密集点对，并输出每个视图的 `points-<view>.png`。对侧面腹部，在已复核的 `registration/registered.png` 上回到同一标定行，标出腹前和背后两个实际边界像素；逐行保存部位、行号、两个端点、来源图哈希及边缘不确定范围。把原来落在手掌上的端点和修订端点分别留在审核记录中。隐藏轮廓标为紧身衣参考估计。做截面时，将躯干专用视图的已复核 mask 作为对应深度方向的输入，手臂路径继续读取同姿图。改变了手臂姿态的整张轮廓不能覆盖原全身拟合输入，仍看不见的边界记为缺测。
+Follow [Body script input](script-inputs.md) to generate `frame.json`. Run `outline_points.py` to extract dense point pairs from the base image and write `points-<view>.png` for each view. For the abdomen in profile, return to the same calibrated row in the reviewed `registration/registered.png`. Mark the actual front and back silhouette pixels. Record the site, row, endpoints, source image hash and edge uncertainty. Retain the old endpoint on the hand alongside its correction. Mark hidden outlines as bodysuit-reference estimates. Use the reviewed torso-view mask for section depth and the original same-pose view for arm paths. An image with a changed arm pose cannot replace the full-body fit input. Record boundaries still hidden as unmeasured.
 
-用 [profile_rows.py](../scripts/profile_rows.py) 绘制逐行端点。为每个测量行在躯干内部点一个像素，保存 `stations.json`。顶层写 `registered_sha256`、`anterior`（图中身体前缘在左填 `left`，在右填 `right`）和 `stations` 数组。每项写部位 `name`、整像素坐标 `inside_px: [x,y]`、布尔值 `anterior_visible` 和 `posterior_visible`，以及判读依据和不确定范围。初检时两端都可填 false，以便先看图，再逐行确认。选择端点时区分前臂外缘、手掌外缘和躯干外缘。
+Mark the row endpoints with [profile_rows.py](../scripts/profile_rows.py). Assign a pixel to each measurement row inside the torso, and save it with `stations.json`. Write `registered_sha256`, `anterior` (fill `left` for the front edge of the body on the left, and `right` for the right side) and `stations` arrays in the top layer. For each item, write the part `name`, the full pixel coordinates `inside_px: [x,y]`, the boolean value `anterior_visible` and `posterior_visible`, as well as the basis for interpretation and uncertainty range. During initial review, you can fill both ends with "false" to first look at the diagram, and then confirm row by row. When selecting endpoints, distinguish between the outer edge of the forearm, the outer edge of the palm, and the outer edge of the torso.
 
 ```sh
 "$PY" skills/charloom-body-measure/scripts/profile_rows.py "$GUIDE" "$PROFILE/registration" "$PROFILE/stations.json" --frame "$MEASURE/frame.json" --out "$PROFILE/rows"
 ```
 
-`profile-points.png` 以青点标记确认可见端、红点标记未确认端。两端都可见的行才连接黄线，输出投影厚度。`profile-rows.json` 保存原图和补图两个轮廓交点、可见性及工作尺度。根据叠图修订时输出到新目录，保留初检记录。
+`profile-points.png` Use blue dots to mark visible areas, and red dots to mark unvisible areas. Lines that are visible on both ends are connected by yellow lines, and the output projection thickness is indicated.`profile-rows.json` Preserve the intersection points of the original and supplementary diagrams, as well as visibility and working scale. Output to the new directory during the overlay revision process, and keep the initial inspection records.
 
-## 原姿势下的手臂与远侧腿
+## The arm in the original posture and the distal leg
 
-竖掌侧图专供躯干。若同姿图里袖子和胸腹连成一片，或两条腿在侧面重叠，可用 [limb_views.py](../scripts/limb_views.py) 将正面和两侧的观测合并为一张图。先从完整标定目录确认两个相反的侧面相机都有源 PNG。命令复用已配准的正面和近侧紧身衣图，远侧读取同角色的相反侧原扫描视图。绿色袖子和手套与蓝色躯干、腿和袜子区分开，便于在同一人物姿态上辨认部位边缘。
+The vertical palm side illustration is specifically for the torso. If the sleeves and chest abdomen are connected in the same pose illustration, or if the legs overlap on the side, you can use [limb_views.py](../scripts/limb_views.py) to combine the front and side views into one image. First, confirm that both opposite side cameras have available PNG images from the complete calibration catalog. Reuse the already aligned front and side close-fitting images, and use the opposite side original scan view for the far side. Green sleeves and gloves are distinguished from the blue torso, legs, and socks, making it easier to identify the edges of different parts of the same person's pose.
 
 ```sh
 LIMBS="$MEASURE/limb-views"
 "$PY" skills/charloom-body-measure/scripts/limb_views.py "$GUIDE" --out "$LIMBS" --generate
 ```
 
-保留 `sheet-input.png`、2560 × 1136 的 `sheet-native.png` 与参数收据。每个 `body_yNNN/` 子目录含与相应相机同尺寸的候选图和来源。分别填写该视图的锚点，按第 4 步传给 `register_profile.py`。将配准后的袖子隔离为手臂专用 mask，逐段确认袖子与手套边缘对应肢体，局部轴、姿势及同侧关节可比。腿和脚也按实际相机近侧识别解剖左右。生成图里的套装表面只可用于隐藏人体估计，证据不足的局部方向仍留空。
+Retain the markings like `sheet-input.png`, 2560 × 1136 as `sheet-native.png`, as well as the parameter receipts. Each `body_yNNN/` sub-directory contains candidate images and sources of the same size as the corresponding camera. Fill in the anchor points for this view, and pass them to `register_profile.py` as per step 4. Isolate the aligned sleeves as a dedicated mask for the arms. Confirm the correspondence between the sleeves and the glove edges for the corresponding limbs. Local axes, postures, and ipsilateral joints can be compared. The legs and feet are also identified as left or right according to the actual camera's proximal anatomy. The generated set of images can only be used for hiding the estimated human body; any unverified local directions should be left blank.
 
-鞋靴换成薄袜后，靴尖和脚趾常常无法一一对应。若两幅图确实共用水平地面，锚点文件可加 `fit_y_lines` 或 `check_y_lines` 数组，每项给出 `name`、`candidate_y`、`base_y`。从两图实际接地处读取行坐标；地面约束只参与纵坐标计算。用未参与拟合的标志单独检查水平方向、朝向及局部轮廓。
+After replacing shoes and boots with thin socks, the toe tips and feet often do not correspond individually. If two images do share the same horizontal ground, an anchor file can include arrays of `fit_y_lines` or `check_y_lines`. Each item should include `name`, `candidate_y`, and `base_y`. Read the row coordinates from the actual grounding points of the two images; the ground constraint only participates in the calculation of the vertical coordinate. Use the markers that are not involved in the fit to separately check the horizontal direction, orientation, and local contours.

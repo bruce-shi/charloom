@@ -1,28 +1,30 @@
-# 原纹理投影、遮挡补图与写回
+# Original texture projection, occlusion patch generation, and write-back
 
-适用于绕颈的衣领、近圆筒形护具。普通平面布料保持其既有连续 UV；不要为了使用圆筒脚本强行改变整件布局。
+English · [简体中文](texture-commands.zh-CN.md)
 
-1. 隔离原扫描中的目标材料，记录原三角面范围。设圆柱中心、工作坐标变换、上下高度；先生成仅含实际观察的圆筒图：
+Suitable for collars around the neck, near cylindrical protective gear. Ordinary flat fabrics maintain their continuous UV properties; do not force a change in the overall layout using cylindrical scripts.
+
+1. Isolate the target material from the original scan, and record the original triangular surface range. Define the center of the cylinder, the work coordinate transformation, and the up and down heights; first generate a cylinder diagram that only contains the actual observed area:
 
 ```sh
 "$PY" skills/charloom-garment-texture/scripts/cylinder_chart.py "$CHART_CONFIG" --out "$CHART_OUT"
 ```
 
-配置字段：`source`、`source_sha256`、4×4 行优先 `source_to_working`、`center_m`、原面 `triangle_ranges`、`size:[宽,高]`、`height_range_m:[下,上]`。可选 `height_radius_slope` 定义展开高度 `h=y-k*r`，用于斜落在肩上的衣领；默认 0。`subdivisions` 默认 2，以原三角形插值 UV 后细分投影。左右图边在背面接缝相接，角度为 `atan2(x-center.x,z-center.z)`。
+Configuration fields: `source`, `source_sha256`, 4×4 row priority `source_to_working`, `center_m`, original plane `triangle_ranges`, `size:[width,height]`, `height_range_m:[lower,upper]`. Optional `height_radius_slope` defines the expansion height `h=y-k*r`, used for collars that fall diagonally on the shoulders; default 0. `subdivisions` default 2, interpolates UVs for the original triangle, and performs subdivision projection. The edges of the left and right images are joined at the back, with an angle of `atan2(x-center.x,z-center.z)`.
 
-输出 `observed.png`（透明处无观察）、`coverage.png`、`source-pixels.npz`（每像素源面及有效像素原面重心坐标）和 `chart.json`。观察图保留源色；头发或皮肤遮挡应在分件与补图 mask 中明确排除，不能把它们当衣领材质继续投射。
+Output `observed.png` (no observation in transparent areas), `coverage.png`, `source-pixels.npz` (centroid coordinates of each pixel source surface and effective pixel original surface), and `chart.json`. The observation diagram retains the source color; hair or skin occlusion should be explicitly excluded from the segmentation and supplementary mask, and should not be projected as if they were clothing material.
 
-2. 把可见的同种布纹、边缝、滚边和金属链纹作为参考，标出实际被遮挡的区域。需要补绘时按任务已选定的 fal 图像编辑流程执行，使用显式 2K、medium 和缓存收据。提示词保留同一展开图的位置、尺度、左右接缝及可见装饰；只补缺失布料。保留编辑前图、mask、补图、参数与请求收据。没有服务授权时不提交付费任务，仍可完成投影与已观察纹理部分。
+2. Mark the areas actually occluded. Refer to visible examples of the same weave, seams, piping or chain pattern. When inpainting is needed, use the fal image-edit workflow selected for the task with explicit 2K, medium quality and a cached receipt. Specify the atlas position, scale, left/right seams and visible decorations. Fill only missing fabric. Keep the original, mask, edited image, parameters and receipt. Projection and visible-texture work can proceed without authorizing a paid image request.
 
-3. 在 Blender 为确实需要替换的面板建立连续 UV：沿衣领背缝切开，环向统一 u，沿下缘到开口统一 v；检查比例与实际补图一致。保留原扫描可见三角面的 UV，只有新面板或明确补绘区用新图集。细分出的原面以重心插值继承 UV，不能让每个新三角形各自投到一个不连续的小色块。设置纹理岛 padding，检查空衣领背面与顶边。
+3. In Blender, create continuous UVs for the panels that need to be replaced: cut along the back seam of the collar, unify the u-values along the circumferential direction, and unify the v-values from the lower edge to the opening; ensure that the scale matches the actual supplementary image. Retain the UVs of the original triangulated surfaces; use the new atlas only for new panels or clearly defined supplementary areas. The subdivided original surfaces should inherit UVs through centroid interpolation; prevent each new triangle from being assigned to a discontinuous small color patch. Set the texture island padding, and check the empty back side of the collar and the top edge.
 
-4. 目检并保存最终连续图集，再写入明确选定的 primitive：
+4. Inspect and save the final continuous atlas, then write the clearly selected primitives:
 
 ```sh
 "$PY" skills/charloom-garment-texture/scripts/apply_atlas.py "$ATLAS_CONFIG" --out "$TEXTURED_GLB"
 "$PY" scripts/animate.py validate "$TEXTURED_GLB"
 ```
 
-配置 `model:{file,sha256}`、`atlas:{file,sha256}`，`primitives:[{node:精确节点名,primitive:序号,uv_evidence:已核对的UV图路径与说明}]`，可选 `material_name`。该命令保留已有 UV/几何/权重与其他材质设置，只克隆选定面使用的材质并更换 base-color 图集；不自动重展开 UV，不把补绘图区错误地应用于整件原服装。
+Configure `model:{file,sha256}`, `atlas:{file,sha256}`, `primitives:[{node:exact_node_name,primitive:index,uv_evidence:reviewed_uv_image_path_and_notes}]`, optional `material_name`. This command retains the existing UV/geometry/weights and other material settings. It only clones the material used for the selected faces and replaces the base-color atlas. UVs are not automatically re-expanded, and the overdraw area is not incorrectly applied to the entire original garment.
 
-5. 在原问题相机检查图案尺度、背缝、翻边、黑面和邻层露底，播放行走与肩颈动作。对照原扫描可见纹理；注明哪些是观察保留、哪些是遮挡补绘。完成后记录最终 GLB 和 atlas 摘要，再进入 Gallery 同帧切层。
+5. Use the camera that first showed the defect. Inspect pattern scale, rear seams, folded edges, black faces and gaps exposing an adjacent layer. Play the walk and shoulder/neck motion. Compare against the visible texture in the original scan. Identify which regions retain observed detail and which were filled under occlusion. Record the final GLB and atlas digests, then switch Gallery layers at the same frame.

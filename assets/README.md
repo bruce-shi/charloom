@@ -1,9 +1,11 @@
-# 资产目录
+# Asset directories
 
-`assets/public/` 存放已决定公开、可重新分发的素材和对应的署名或许可文件。将这些文件提交到开发仓库后，镜像工具会按原路径同步到公开仓库。
+English · [简体中文](README.zh-CN.md)
 
-`assets/private/` 存放私有素材、角色输入及其标注。仓库已有的扫描、授权参考模型、生成的测试模型、动作源和运行输出继续使用各自原有路径。公开镜像沿用已发布的 fixture，新增素材通过以上分区选择可见性。
+Store assets cleared for redistribution and their attribution or license files in `assets/public/`. After you commit them in the development repository, the mirror publishes them at the same paths.
 
-Skills 和脚本可以读取调用者提供的本地 GLB、动作、模板和配准参考。完整的角色制作需要按对应 skill 准备这些输入。
+Keep private assets, character inputs and their annotations in `assets/private/`. Existing scans, licensed reference models, generated test models, motion sources and run outputs retain their original paths. The public mirror keeps its published fixtures. Choose the appropriate directory for each new asset.
 
-批处理工具通过 `CHARLOOM_BATCH_CONFIG` 读取本地 JSON。其中 `characters` 按角色名给出三个值，依次为源模型路径、模板路径和标注目录名，`smoke` 可列出快速检查的角色名。Shell 批处理通过 `CHARLOOM_BATCH_TABLE` 读取调用者自己的 zsh 输入表。依赖特定角色的重放示例需要提供对应的绑定模型、动作和配置。
+Skills and scripts read local GLBs, motion files, templates and registered references supplied by the caller. Prepare the inputs specified by the skill for the character you intend to build.
+
+Batch tools read a local JSON file through `CHARLOOM_BATCH_CONFIG`. In `characters`, map each character name to the source model path, template path and annotation directory name, in that order. Use `smoke` to list names for a quick check. The shell batch runner reads your zsh input table through `CHARLOOM_BATCH_TABLE`. Character-specific replays require the corresponding bound model, motion and configuration.

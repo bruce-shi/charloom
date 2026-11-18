@@ -1,34 +1,36 @@
 ---
 name: charloom-body-fit
-description: 拟合 Charloom MakeHuman 裸模，修复胸廓、肩腋、上臂、手腕或颈部轮廓与动作变形。
+description: "Fit a MakeHuman body to a Charloom scan. Correct the rib cage, shoulders, armpits, upper arms, wrists and neck, then check shape and deformation in motion."
 ---
 
-# 拟合并复查裸模
+# Fit and inspect the bare body
 
-从当前角色的原扫描、标定 guide、MakeHuman 模板和已选轮廓开始。在同一工作坐标系拟合完整胸廓，再沿左右臂各自的轴调整局部截面。对已有角色，从 Gallery 对应的导出追溯最近一次形状完整的裸模与构建收据。
+English · [简体中文](SKILL.zh-CN.md)
 
-开始前必须完成[主流程的拟合前量体](../charloom-mh/SKILL.md#3-先量体并保存目标再开始拟合)，检查目标值、路径、截面、来源及尺度。当前 transfer 只直接使用标记和轮廓，不读取完整量体表，也不强制检查量体是否完成；调用方必须检查前置证据，并以目标表逐项复测和修正首次导出。
+Start with the character’s original scan, calibrated guide, MakeHuman template and selected contours. Fit the entire rib cage in one working frame, then adjust cross-sections along each arm’s own axis. For an existing character, trace the export loaded in the Gallery back to the most recent intact bare-body fit and its build record.
 
-- 核对 `transfer/report.json` 的 `stage2_body_fit`。其中 `source_hash`、`contours`、`registered_views` 应对应本次 guide、选用的轮廓和已标定视图。出现旧 ensemble 或侧面对应错误时，修正输入并重做 transfer。
-- 在正面、侧面、斜侧面叠加导出的皮肤，核对胸峰、侧肋、腋前、上臂与腕掌过渡。单侧抬臂时固定胸廓，比较胸内侧位移、腋前网格边长及三角肌到二头肌的连续截面。[胸廓、肩臂截面与抬臂检查](references/chest-and-arms.md)
-- 对颈根台阶、下巴缝隙或肤色分界，分别检查几何、法线、贴图及头颈权重，复查转头时的接缝。[下颌与颈部接合](references/neck-and-jaw.md)
+Before fitting, complete [Pre-fit measurements](../charloom-mh/SKILL.md#3-measure-and-save-target-dimensions-before-fitting). Check target values, paths, sections, sources and scale. The transfer reads landmarks and contours directly. The caller must verify the measurement evidence and use the target table to remeasure and correct the first export.
 
-输出是能与原扫描和量体图逐项对照的裸模。修改肩臂后，在最终裸模和穿衣版复测受影响的长度、截面和腋下运动。
+- Check the `transfer/report.json` with the `stage2_body_fit`. The `source_hash`, `contours`, and `registered_views` should correspond to this guide, the selected contour, and the calibrated view. If there are errors in the corresponding old ensemble or side faces, correct the input and re-perform the transfer.
+- Overlay the skin derived from the front, side, and oblique sides, and verify the transition between the chest peak, lateral ribs, in front of the armpit, upper arm, and wrist. When lifting the arm on one side, fix the chest, and compare the displacement of the inner side of the chest, the side length of the in-front grid, and the continuous section from the deltoid to the biceps. [Chest, shoulder and arm section views and arm lifting examination](references/chest-and-arms.md)
+- For the neck root step, chin gap, or skin color boundary, check the geometry, normal, texture mapping, and head-neck weight respectively. Review the seams when turning the head. [Jaw and neck connection](references/neck-and-jaw.md)
 
-## 按实际步行骨架选择绑定入口
+The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "The translated text is: "
 
-需要保留源步行骨架时，按[原步行绑定流程](../charloom/references/walk-replay.md)把拟合好的身体和权重映射到该骨架。以下命令专用于模板骨架驱动的迁移。
+## Choose the rig that drives the walk
 
-从仓库根目录设置 `SCAN`、`PRIOR`、`GUIDE`、`TRANSFER` 和 `MOTION` 为本次文件或目录。TRANSFER 使用新目录，末级目录名作为后续角色配置的键。
+When it is necessary to retain the source walking skeleton, map the fitted body and weights to the skeleton using [Original walking binding process](../charloom/references/walk-replay.md). The following commands are specifically used for migration driven by the template skeleton.
+
+Set `SCAN`, `PRIOR`, `GUIDE`, `TRANSFER`, and `MOTION` in the root directory of the repository for this file or directory. TRANSFER uses a new directory, with the sub-directory name serving as the key for subsequent character configuration.
 
 ```sh
 "$PY" scripts/scan-transfer.py "$SCAN" --prior "$PRIOR" --guidance "$GUIDE/guidance.json" --out "$TRANSFER" --motion "$MOTION" --mouth-trace "$GUIDE/mouth-trace.json"
 ```
 
-分件要求复核时，读取命令输出的候选面文件，按[分件流程](../charloom-garment-separate/SKILL.md)补齐 decisions 后重试。结果包含 `0-guide/resolved.json`、`3-skin/body.glb`、`4-garments/character.glb` 和 `report.json`，供后续原头装配使用。
+During the review of component requirements, read the candidate surface file output by the command, complete the "decisions" section as per [Parted process](../charloom-garment-separate/SKILL.md), and then try again. The results include `0-guide/resolved.json`, `3-skin/body.glb`, `4-garments/character.glb`, and `report.json`, which are used for subsequent head assembly.
 
-## 完整表面修形与带入下游
+## Reshape the complete surface and update the exports
 
-尺寸或胸肩形状超差时，按[原模板截面映射](references/section-refit.md)运行 `refit_sections.py`，用有证据的解剖站位和区域混合权重恢复完整胸廓并调整局部肢体。按同一定义重测六条沿体路径（包含双侧腋下大臂内侧）、密集宽深、真实截面和手脚。通过后用 `copy_body.py` 更新兼容的裸模/穿衣文件，再重查服装；两个命令均保留旧输出。
+When the dimensions or chest and shoulder shapes are off, run [Original template section mapping](references/section-refit.md) and `refit_sections.py`. Use evidence-based anatomical positions and regional mix weights to restore a complete chest and adjust local limbs. Repeat the same definition for six body paths (including both bilateral axillary and medial arms), dense width, true section, and hands and feet. After using `copy_body.py`, update the compatible naked/made-up model file, and re-check the clothing; both commands retain the old output.
 
-腕到指尖的长度接近而手仍偏向前后时，按[腕掌朝向复测与修正](references/section-refit.md#核对并修正腕掌朝向)检查三维方向，并重新绑定实际动作。
+When the length from the wrist to the fingertips is close, but the hand still tends towards the front or back, check the 3D orientation with [Palm orientation re-measurement and correction](references/section-refit.md#check-and-correct-wrist-and-palm-orientation) and re-bind the actual movement.

@@ -1,5 +1,7 @@
 # Guidance for `charloom mh-transfer` (vision agent task)
 
+English · [简体中文](scan-annotation.zh-CN.md)
+
 Current builds use the Python guide CLI. Run it with the source GLB and guide paths from the repository root. The annotation fields below apply to this route. References to `charloom mh-*` commands in older sections describe the retired CLI.
 
 | Operation | Current command |

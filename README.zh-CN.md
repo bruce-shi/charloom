@@ -1,6 +1,6 @@
 # Charloom
 
-[English](README.md) · 简体中文
+[English](README.md) · 简体中文 · [文档目录](docs/README.zh-CN.md)
 
 Charloom 把带贴图的扫描模型做成可在 Blender 中编辑的角色。你可以拟合 MakeHuman 身体，绑定原扫描头部和衣物，并在角色已有骨架上追加动作。Blender 插件提供编辑面板，配套的 agent skills 指导标定、拟合、动画和验收。
 
@@ -78,13 +78,13 @@ done
 
 | 任务 | 技能入口 |
 | --- | --- |
-| 从原始扫描制作角色 | [charloom-mh](skills/charloom-mh/SKILL.md) |
-| 编辑已绑定角色或追加动作 | [charloom](skills/charloom/SKILL.md) |
-| 检查交付模型和实际动作 | [charloom-gallery-review](skills/charloom-gallery-review/SKILL.md) |
+| 从原始扫描制作角色 | [charloom-mh](skills/charloom-mh/SKILL.zh-CN.md) |
+| 编辑已绑定角色或追加动作 | [charloom](skills/charloom/SKILL.zh-CN.md) |
+| 检查交付模型和实际动作 | [charloom-gallery-review](skills/charloom-gallery-review/SKILL.zh-CN.md) |
 
 ## 从原始扫描构建角色
 
-准备静态扫描 GLB（单张 UV 图集）、MakeHuman 身体模板和 FBX 或 GLB 动作。用下列命令创建标注文件，然后在 `guidance.json` 中标记人体关键点和衣物分区。按扫描标定 skill 制作特写，描出唇线和眼睑边界。[模板准备](docs/mpfb-prior.md) · [扫描标定](skills/charloom-scan-guide/SKILL.md) · [资产目录](assets/README.md)
+准备静态扫描 GLB（单张 UV 图集）、MakeHuman 身体模板和 FBX 或 GLB 动作。用下列命令创建标注文件，然后在 `guidance.json` 中标记人体关键点和衣物分区。按扫描标定 skill 制作特写，描出唇线和眼睑边界。[模板准备](docs/mpfb-prior.zh-CN.md) · [扫描标定](skills/charloom-scan-guide/SKILL.zh-CN.md) · [资产目录](assets/README.zh-CN.md)
 
 ```sh
 "$CHARLOOM_CV_PYTHON" scripts/scan-guide.py scan.glb --out out/guide
@@ -126,7 +126,7 @@ bpy.context.scene.frame_set(18)
 api.export_character(rig, built / "edited.glb")
 ```
 
-原扫描可用 `api.prepare_guide` 和 `api.transfer_scan` 处理，也可以将扫描及配套输入传给 `api.build_character`。身体修整用 `api.fit_surface`，衣物绑定用 `api.bind_clothing`。处理动作用 `api.retarget_animation`、`api.solve_pose` 或 `api.build_animation`。[在已有骨架上追加动作](skills/charloom/references/walk-replay.md)
+原扫描可用 `api.prepare_guide` 和 `api.transfer_scan` 处理，也可以将扫描及配套输入传给 `api.build_character`。身体修整用 `api.fit_surface`，衣物绑定用 `api.bind_clothing`。处理动作用 `api.retarget_animation`、`api.solve_pose` 或 `api.build_animation`。[在已有骨架上追加动作](skills/charloom/references/walk-replay.zh-CN.md)
 
 要直接运行命令行动画工具，请准备配方引用的本地绑定模型。下例读取足部锁定配方中的资产路径。
 
@@ -136,4 +136,4 @@ api.export_character(rig, built / "edited.glb")
 "$CHARLOOM_CV_PYTHON" scripts/skin.py analyze out/foot-lock/character.glb
 ```
 
-要在只读 Gallery 登记成品，先用 `python3 scripts/mh-ide-sync.py BUILD_PARENT --dry-run` 预览登记结果，再去掉 `--dry-run` 执行。运行 `(cd viewer && bun run dev)`，打开终端打印的会话链接，即可对比原扫描、裸模、穿衣版和实际动画。生产预览在 `viewer/` 下执行 `bun run build` 和 `bun run preview`。[导入已有项目](docs/local-workspace.md)
+要在只读 Gallery 登记成品，先用 `python3 scripts/mh-ide-sync.py BUILD_PARENT --dry-run` 预览登记结果，再去掉 `--dry-run` 执行。运行 `(cd viewer && bun run dev)`，打开终端打印的会话链接，即可对比原扫描、裸模、穿衣版和实际动画。生产预览在 `viewer/` 下执行 `bun run build` 和 `bun run preview`。[导入已有项目](docs/local-workspace.zh-CN.md)

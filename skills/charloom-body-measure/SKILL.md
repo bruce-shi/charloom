@@ -1,22 +1,24 @@
 ---
 name: charloom-body-measure
-description: 测量 Charloom 扫描角色的身体比例、双侧臂腿表面长度和肢体截面。遮挡部位使用已配准的紧身衣参考。
+description: "Measure a scanned character’s proportions, surface paths on both arms and legs, and limb cross-sections. Use a registered bodysuit reference for occluded anatomy."
 ---
 
-# 在角色自身的标定坐标系量体
+# Measure in the character’s calibrated coordinate frame
 
-本步骤必须在身体拟合前完成。按[主流程第 3 步](../charloom-mh/SKILL.md#3-先量体并保存目标再开始拟合)保存逐部位目标、坐标尺度、证据和误差范围；生成参考图与提取轮廓只是准备工作，不能记为量体完成。
+English · [简体中文](SKILL.zh-CN.md)
 
-按[生成、配准与标记量体图](references/measurement-plates.md)制作正侧参考。侧面量躯干时，手掌竖直贴大腿外侧，指尖朝下，小腹前缘完整可见。遮挡时用同一相机另生成此姿势的侧图，配准后只更新可见的躯干测点。
+This step must be completed before body fitting. Save the per-part targets, coordinate scale, evidence, and error range by pressing [Step 3 of the main process](../charloom-mh/SKILL.md#3-measure-and-save-target-dimensions-before-fitting); generating reference maps and extracting contours are only preparatory steps and cannot be counted as completed body work.
 
-1. 可见皮肤直接量原扫描。衣甲遮挡部位使用同一角色、姿态和相机的紧身衣参考，标明估算区域。先查已配准图像及收据。
-2. 衣甲遮挡要制作的裸身时，有效配准参考是必需输入；可复用已验证参考，缺失时必须生成。生成前按[环境准备](../charloom/references/setup.md#图片服务依赖)检查 ImageMagick、图片服务凭据和执行授权。从仓库根目录将 `PY` 指向已安装项目 CV 依赖的 Python，将 `GUIDE` 指向当前标定目录，运行 `"$PY" scripts/mh-bodysuit.py "$GUIDE" --edit --back`。对照输入检查脸、手、脚、侧面朝向和同一解剖位置的高度。核对 `views/bodysuit.json` 的 `accepted`、尺度、配准锚点和测量覆盖区。
-3. 一组通过配准的参考用 `"$PY" scripts/mh-suit-contours.py "$GUIDE"` 提取轮廓。只有多次观测才能解决轮廓歧义时，才运行 `"$PY" scripts/mh-suit-ensemble.py "$GUIDE" --edit --runs 3`；检查各样本一致性和 `views/suit_contours.ensemble.json`。保留实际选用的轮廓文件和收据。
-4. 每侧分别沿肩尖、外肘、外腕和侧髋、外膝、外踝量三维表面路径。另记关节链长、垂直落差和腕到可见指尖的长度。围度或粗细沿局部肢体轴作垂直截面，记录位置、中心、宽、深。静止和动作帧分开记录。
-5. 用同一测量路径复查导出的皮肤。需要重现长度或臂腰间隙误差时，使用[测点、路径及导出校验命令](references/surface-measurements.md)。
+Follow [Generate, register and mark measurement references](references/measurement-plates.md) to prepare front and side references. For a torso profile, place the palm vertically against the outer thigh with fingertips down and the front edge of the lower abdomen visible. If the abdomen is occluded, generate a separate view in that pose with the same camera. After registration, update only visible torso observations.
 
-区分可见皮肤三维实测、衣物外壳实测、二维投影和隐藏裸身估计。不可观测的深度与路径不得冒称实测；保留估计依据及误差范围，证据不足的必需项先补齐。没有现实尺度依据时，记录工作模型毫米及其换算来源。不得用拟合后的身体反推拟合前的目标。
+1. Measure exposed skin directly on the original scan. For areas covered by clothing or armour, use a bodysuit reference showing the same character, pose and camera, and identify the regions estimated from it. Check for registered images and their receipts first.
+2. For the armor-covering process, the effective registration reference must be entered; reusable verified references can be used, and they must be generated if missing. Before generation, check ImageMagick, image service credentials, and execution permissions using [Preparation for the environment](../charloom/references/setup.md#image-service-requirements). Point `PY` to the Python script that depends on the installed project from the repository root directory, and point `GUIDE` to the current calibration directory. Run `"$PY" scripts/mh-bodysuit.py "$GUIDE" --edit --back`. Compare the input to check the face, hands, feet, side orientation, and height at the same anatomical position. Verify the `accepted`, scale, registration anchors, and measurement coverage area in the `views/bodysuit.json`.
+3. For one registered reference set, extract contours using `"$PY" scripts/mh-suit-contours.py "$GUIDE"`. Use `"$PY" scripts/mh-suit-ensemble.py "$GUIDE" --edit --runs 3` only when repeated observations are needed to resolve contour ambiguity. Compare the samples and inspect `views/suit_contours.ensemble.json`. Keep the selected contour file and its receipt.
+4. Measure the three-dimensional surface paths along the shoulder tips, outer elbows, outer wrists, and lateral hips, outer knees, and outer ankles on each side. Also record the joint chain length, vertical drop, and the length from the wrist to the visible fingertips. The girth or thickness is recorded along the local limb axis in vertical cross-sections, with the position, center, width, and depth being noted. Static and motion frames are recorded separately.
+5. Review the exported skin using the same measurement path. Use [Measurement points, paths, and export validation commands](references/surface-measurements.md) when needing to reproduce the length or hip-to-hip gap errors.
 
-## 直接执行
+Distinguish between visible skin's 3D measurements, clothing shell measurements, 2D projections, and hidden naked estimates. Unobservable depths and paths should not be mistaken for measured values; retain the basis for estimates and error margins. Items with insufficient evidence should be filled in. When there is no basis in real-world dimensions, record the millimeters of the working model and its conversion sources. Do not use the fitted body to infer the target before the fitting.
 
-按[脚本输入与逐步命令](references/script-inputs.md)先计算工作坐标，再输出密集轮廓、双侧外臂/外腿路径，以及双侧腋下大臂内侧路径。`surface_tape.py` 的 `upperarm_inner` 必须用独立的 `axilla_l/r`、`elbow_inner_l/r` 表面标记；从腋窝下缘量到肘内侧，不能拿肩关节到肘关节长度充数。最后用真实三角面截面及导出绑定复测。
+## Commands
+
+First, calculate the working coordinate using [Script input and step-by-step commands](references/script-inputs.md), and then output the dense contour, bilateral outer arm/outer leg paths, and the bilateral armpit inner side path. The `upperarm_inner` in `surface_tape.py` must be marked with separate `axilla_l/r` and `elbow_inner_l/r` surfaces; measure from the lower edge of the armpit to the inner side of the elbow, and do not use the length from the shoulder joint to the elbow joint as the total length. Finally, perform a real-tripolygon section and export the binding verification.

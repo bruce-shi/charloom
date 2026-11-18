@@ -1,5 +1,7 @@
 # Fit and inspect textured garments
 
+English · [简体中文](panel-uv.zh-CN.md)
+
 Start from the original panel, its UV islands and the final wearer's skin. Section both along the limb or torso at the same stations. Place the openings about the measured centres with room for the skin at the elbow, wrist, neck and waist. Size a rigid shell once, move its trim and fasteners with it and bind it to its mount. Fit a flexible panel with a smooth displacement shared by adjacent seams and layers. Inspect inner caps at sleeve and waistband openings separately from visible outer fabric.
 
 When a dark patch appears after separating layers, render the same angle with the suspected component visible and hidden. A connected island can contain surfaces that belong to different parts. Identify their boundary on the textured source and recover the visible triangles with their original UV interpolation. Fit overlapping layers with a common, smooth local deformation and compatible skin weights. For material hidden in the source, unwrap that section, use the adjacent weave and seam as the edit reference, and blend the repaired texels into the occluded area. Keep the source projection, edit and coverage mask. Inspect the empty garment from behind as well as the worn front and moving shoulder.

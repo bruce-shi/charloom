@@ -1,14 +1,16 @@
 ---
 name: charloom-face-dialogue
-description: 绑定 Charloom 原头、眼睑、嘴唇与口腔内壁，诊断说话时的口内突出、闭唇失败和面部动作。
+description: "Bind the original scanned head, eyelids, lips and oral lining. Diagnose protrusions inside the mouth, incomplete lip closure and facial motion during dialogue."
 ---
 
-# 绑定面部并复查说话
+# Bind the face and review dialogue
 
-在原扫描头的可见三角面上绑定眼睑和口型，保留中性表面、UV、贴图及已有牙弓。先辨认绘制的五官、开放眼部薄片、独立眼球和口腔碎面，再决定各部件的绑定方式。沿实测唇缝切分上下唇，口腔内壁跟随实际唇边。[原头配置、动作嵌入与校验命令](references/face-build.md)
+English · [简体中文](SKILL.zh-CN.md)
 
-**说话时嘴外出现薄片**
+Bind the eyelids and mouth shape to the visible triangular surface of the original scan head. Retain the neutral surface, UV, textures, and the existing dental arch. First, identify the drawn facial features, open eyelid sheets, individual eyeballs, and the fragmented oral surface, then decide the binding method for each component. Cut the upper and lower lips along the actual lip seams, and the inner wall of the mouth follows the actual lip edges. [Original Head Configuration, Action Embedding, and Verification Commands](references/face-build.md)
 
-1. 固定报告的音节、时间和侧面相机，逐层隐藏口腔内壁、舌头、牙弓和嘴唇。在同一帧确认哪一层产生外露轮廓。
-2. 若是重建的内壁，在最终脸部网格上逐段找到实际分开的上下唇边，沿口宽绑定对应边及插值位置。让内壁开合跟随相邻唇边的形变，在移动头部的局部坐标系量前后距离。检查嘴角、偏离唇中点的采样，以及落在投影三角形外的插值。
-3. 用裸模和穿衣 GLB 播放说话、表情和转头。从侧面看最大张口，从斜前方看牙与下唇。按实际语音检查 M/B/P 闭合、F/V 接触和开口元音。分别记录唇缝开合量和内壁相对唇边的最大前向距离，附上对应音节、帧和侧视图。
+**Thin layers appear outside the mouth during speech**
+
+1. Use the reported syllable, time and side camera. Hide the mouth lining, tongue, dental arches and lips one layer at a time. Identify which surface protrudes at that exact frame.
+2. If the reconstructed lining protrudes, locate the upper and lower lip edges segment by segment on the final face mesh. Bind the corresponding edges and interpolate across the width of the mouth. Drive the lining from adjacent lip-edge deformation. Measure front-to-back distances in the moving head’s local frame. Inspect the mouth corners, off-centre samples and any interpolation outside a projected triangle.
+3. Play dialogue, expressions and head turns on both exported GLBs. Inspect peak opening in profile and tooth-to-lower-lip contact from an oblique front view. Check M/B/P closure, F/V contact and open vowels against the actual speech. Record the lip aperture and the maximum forward offset of the mouth lining relative to the lip edge, with the syllable, frame and side view.
